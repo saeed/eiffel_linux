@@ -188,6 +188,7 @@ struct tcp_sock {
 	u32	lsndtime;	/* timestamp of last sent data packet (for restart window) */
 	u32	last_oow_ack_time;  /* timestamp of last out-of-window ACK */
 
+	u64 lst_tx_time;
 	u32	tsoffset;	/* timestamp offset */
 
 	struct list_head tsq_node; /* anchor in tsq_tasklet.head list */

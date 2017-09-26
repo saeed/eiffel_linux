@@ -928,6 +928,7 @@ static int tcp_transmit_skb(struct sock *sk, struct sk_buff *skb, int clone_it,
 	struct tcp_md5sig_key *md5;
 	struct tcphdr *th;
 	int err;
+	u64 now, rate;
 
 	BUG_ON(!skb || !tcp_skb_pcount(skb));
 	tp = tcp_sk(sk);
@@ -1017,6 +1018,26 @@ static int tcp_transmit_skb(struct sock *sk, struct sk_buff *skb, int clone_it,
 					       md5, sk, skb);
 	}
 #endif
+	now = ktime_get_ns();
+	if (!tp->lst_tx_time)
+		tp->lst_tx_time = now;
+
+	// rate stuff
+	if (sk->sk_pacing_rate) {
+		rate = sk->sk_max_pacing_rate;
+		rate = min(sk->sk_pacing_rate, rate);
+
+		if (rate != ~0U) {
+			u64 len = ((u64)skb->len) * NSEC_PER_SEC;
+			if (likely(rate))
+				do_div(len, rate);
+
+			skb->trans_time = tp->lst_tx_time + len;
+			if (skb->trans_time < now)
+				skb->trans_time = now;
+		}
+		tp->lst_tx_time = skb->trans_time;
+	}
 
 	icsk->icsk_af_ops->send_check(sk, skb);
 

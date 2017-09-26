@@ -758,6 +758,7 @@ struct sk_buff {
 #endif
 #endif
 
+	__u64 trans_time;
 	union {
 		__wsum		csum;
 		struct {
