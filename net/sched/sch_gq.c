@@ -327,6 +327,9 @@ static int gq_enqueue(struct sk_buff *skb, struct Qdisc *sch,
 	else
 		tx_time = now;
 
+	if (!q->gq)
+		return -1;
+
 	gq_push (q->gq, skb, tx_time);
 
 	sch->q.qlen++;
@@ -403,7 +406,8 @@ static int gq_init(struct Qdisc *sch, struct nlattr *opt)
 
 	gq_p = (struct gradient_queue*)kmalloc_node(sizeof(struct gradient_queue), GFP_KERNEL | __GFP_REPEAT | __GFP_NOWARN, netdev_queue_numa_node_read(sch->dev_queue));
 
-
+	if (!gq_p)
+		return -1;
 	gq_p->head_ts = now / granularity;
 	gq_p->grnlrty = granularity;
 	gq_p->num_of_buckets = horizon / granularity;
