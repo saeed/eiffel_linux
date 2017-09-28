@@ -412,8 +412,10 @@ static int gq_init(struct Qdisc *sch, struct nlattr *opt)
 	gq_p = kmalloc(sizeof (struct gradient_queue), GFP_KERNEL);
 	//gq_p = (struct gradient_queue*)kmalloc_node(sizeof(struct gradient_queue), GFP_KERNEL | __GFP_REPEAT | __GFP_NOWARN, netdev_queue_numa_node_read(sch->dev_queue));
 
-	if (!gq_p)
+	if (!gq_p) {
+		printk(KERN_DEBUG "couldn't allocate memory\n");
 		return -1;
+	}
 	gq_p->head_ts = now / granularity;
 	gq_p->grnlrty = granularity;
 	gq_p->num_of_buckets = horizon / granularity;
