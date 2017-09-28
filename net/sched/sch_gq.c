@@ -404,7 +404,8 @@ static int gq_init(struct Qdisc *sch, struct nlattr *opt)
 	u32 base = 32;
 	u64 now = ktime_get_ns();
 
-	gq_p = (struct gradient_queue*)kmalloc_node(sizeof(struct gradient_queue), GFP_KERNEL | __GFP_REPEAT | __GFP_NOWARN, netdev_queue_numa_node_read(sch->dev_queue));
+	gq_p = kmalloc(sizeof (struct gradient_queue), GFP_KERNEL);
+	//gq_p = (struct gradient_queue*)kmalloc_node(sizeof(struct gradient_queue), GFP_KERNEL | __GFP_REPEAT | __GFP_NOWARN, netdev_queue_numa_node_read(sch->dev_queue));
 
 	if (!gq_p)
 		return -1;
@@ -419,13 +420,21 @@ static int gq_init(struct Qdisc *sch, struct nlattr *opt)
 		gq_p->s *= gq_p->w;
 	gq_p->s = (gq_p->s - 1) / (gq_p->w - 1);
 
-	gq_p->buckets = (struct gq_bucket*)kmalloc_node(sizeof(struct gq_bucket) * gq_p->num_of_buckets, GFP_KERNEL | __GFP_REPEAT | __GFP_NOWARN, netdev_queue_numa_node_read(sch->dev_queue));
-	gq_p->meta1 = (struct curvature_desc*)kmalloc_node(sizeof(struct curvature_desc) * gq_p->s, GFP_KERNEL | __GFP_REPEAT | __GFP_NOWARN, netdev_queue_numa_node_read(sch->dev_queue));
-	gq_p->meta2 = (struct curvature_desc*)kmalloc_node(sizeof(struct curvature_desc) * gq_p->s, GFP_KERNEL | __GFP_REPEAT | __GFP_NOWARN, netdev_queue_numa_node_read(sch->dev_queue));
+	gq_p->buckets =
+		kmalloc(sizeof (struct gq_bucket) * gq_p->num_of_buckets, GFP_KERNEL);
+	gq_p->meta1 =
+		kmalloc(sizeof (struct curvature_desc) * gq_p->s, GFP_KERNEL);
+	gq_p->meta2 =
+		kmalloc(sizeof (struct curvature_desc) * gq_p->s, GFP_KERNEL);
+	//gq_p->buckets = (struct gq_bucket*)kmalloc_node(sizeof(struct gq_bucket) * gq_p->num_of_buckets, GFP_KERNEL | __GFP_REPEAT | __GFP_NOWARN, netdev_queue_numa_node_read(sch->dev_queue));
+	//gq_p->meta1 = (struct curvature_desc*)kmalloc_node(sizeof(struct curvature_desc) * gq_p->s, GFP_KERNEL | __GFP_REPEAT | __GFP_NOWARN, netdev_queue_numa_node_read(sch->dev_queue));
+	//gq_p->meta2 = (struct curvature_desc*)kmalloc_node(sizeof(struct curvature_desc) * gq_p->s, GFP_KERNEL | __GFP_REPEAT | __GFP_NOWARN, netdev_queue_numa_node_read(sch->dev_queue));
 	memset(gq_p->meta1, 0, sizeof(struct curvature_desc)*gq_p->s);
 	memset(gq_p->meta2, 0, sizeof(struct curvature_desc)*gq_p->s);
+	//gq_p->meta_tmp = (struct precalc_a_b*)kmalloc_node(sizeof(struct precalc_a_b) * (gq_p->w + 1), GFP_KERNEL | __GFP_REPEAT | __GFP_NOWARN, netdev_queue_numa_node_read(sch->dev_queue));
 
-	gq_p->meta_tmp = (struct precalc_a_b*)kmalloc_node(sizeof(struct precalc_a_b) * (gq_p->w + 1), GFP_KERNEL | __GFP_REPEAT | __GFP_NOWARN, netdev_queue_numa_node_read(sch->dev_queue));
+	gq_p->meta_tmp =
+		kmalloc(sizeof (struct precalc_a_b) * (gq_p->w + 1), GFP_KERNEL);
 
 	for (i = 0; i <= base; i++) {
 		if (!i)
