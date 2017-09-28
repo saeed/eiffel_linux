@@ -343,6 +343,11 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 	u64 tx_time, now = ktime_get_ns();
 	struct sk_buff *skb;
 
+	if(!q->gq) {
+		printk(KERN_DEBUG "NO MEMROY ALLOCATED FOR GQ \n");
+		return NULL;
+	}
+
 	skb = gq_extract(q->gq, now);
 	if(!skb) {
 		if (q->gq->num_of_elements) {
