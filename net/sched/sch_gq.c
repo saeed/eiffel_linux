@@ -409,7 +409,7 @@ static int gq_init(struct Qdisc *sch, struct nlattr *opt)
 	u32 base = 32;
 	u64 now = ktime_get_ns();
 
-	gq_p = vmalloc_user(1 * sizeof (struct gradient_queue));
+	gq_p = kmalloc(1 * sizeof (struct gradient_queue), GFP_KERNEL | __GFP_REPEAT);
 	//gq_p = (struct gradient_queue*)kmalloc_node(sizeof(struct gradient_queue), GFP_KERNEL | __GFP_REPEAT | __GFP_NOWARN, netdev_queue_numa_node_read(sch->dev_queue));
 
 	if (!gq_p || !q->gq) {
