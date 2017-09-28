@@ -406,8 +406,8 @@ static int gq_init(struct Qdisc *sch, struct nlattr *opt)
 	struct gq_sched_data *q = qdisc_priv(sch);
 	struct gradient_queue *gq_p;
 	int i = 0;
-	u64 granularity = 10000;
-	u64 horizon = 1000000000;
+	u64 granularity = 100000;
+	u64 horizon = 10000000000;
 	u32 base = 32;
 	u64 now = ktime_get_ns();
 
