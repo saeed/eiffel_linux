@@ -213,8 +213,10 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb, uint64_t ts) {
 	ts = ts / gq->grnlrty;
 	if (ts <= gq->head_ts) {
 		ts = gq->head_ts;
+		printk(KERN_DEBUG "SCHED IN PAST\n")
 	} else if (ts > gq->head_ts + gq->num_of_buckets - 1) {
 		ts = gq->head_ts + gq->num_of_buckets - 1;
+		printk(KERN_DEBUG "HORIZON NOT ENOUGH\n");
 	}
 	gq->num_of_elements++;
 	im = gq->num_of_buckets - ts - 1;
@@ -307,7 +309,7 @@ unsigned int log_approx(uint32_t v) {
   	{
     	v >>= S[i];
     	r |= S[i];
-  	} 
+  	}
 	}
 	return r;
 }
@@ -327,9 +329,6 @@ static int gq_enqueue(struct sk_buff *skb, struct Qdisc *sch,
 	else
 		tx_time = now;
 
-	if (!q->gq)
-		return -1;
-
 	gq_push (q->gq, skb, tx_time);
 
 	sch->q.qlen++;
@@ -343,13 +342,9 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 	u64 tx_time, now = ktime_get_ns();
 	struct sk_buff *skb;
 
-	if(!q->gq) {
-		printk(KERN_DEBUG "NO MEMROY ALLOCATED FOR GQ \n");
-		return NULL;
-	}
-
 	skb = gq_extract(q->gq, now);
 	if(!skb) {
+		printk(KERN_DEBUG "NO PACKETS IN GQ\n");
 		if (q->gq->num_of_elements) {
 			qdisc_watchdog_cancel(&q->watchdog);
 			tx_time = gq_index_to_ts(q->gq, gq_get_min_index(q->gq));
@@ -393,7 +388,6 @@ static void gq_destroy(struct Qdisc *sch)
 	kvfree(gq_p->meta1);
 	kvfree(gq_p->meta2);
 	kvfree(gq_p->meta_tmp);
-	
 	kvfree(gq_p);
 
 	qdisc_watchdog_cancel(&q->watchdog);
@@ -404,57 +398,43 @@ static int gq_init(struct Qdisc *sch, struct nlattr *opt)
 	struct gq_sched_data *q = qdisc_priv(sch);
 	struct gradient_queue *gq_p;
 	int i = 0;
-	u64 granularity = 10000;
-	u64 horizon = 1000000;
+	u64 granularity = 8000;
+	u64 horizon = 100000000;
 	u32 base = 32;
 	u64 now = ktime_get_ns();
 
-	//gq_p = kmalloc(1 * sizeof (struct gradient_queue), GFP_KERNEL | __GFP_REPEAT);
-	gq_p = (struct gradient_queue*)kmalloc_node(sizeof(struct gradient_queue), GFP_KERNEL | __GFP_REPEAT | __GFP_NOWARN, netdev_queue_numa_node_read(sch->dev_queue));
+	gq_p = kmalloc_node(sizeof(struct gradient_queue),
+			GFP_KERNEL | __GFP_REPEAT | __GFP_NOWARN,
+			netdev_queue_numa_node_read(sch->dev_queue));
 
-	if (!gq_p) {
-		printk(KERN_DEBUG "couldn't allocate memory\n");
-		return -1;
-	}
 	gq_p->head_ts = now / granularity;
 	gq_p->grnlrty = granularity;
 	gq_p->num_of_buckets = horizon / granularity;
 	gq_p->num_of_elements = 0;
 	gq_p->w = base;
-	gq_p->l = ((log_approx(gq_p->num_of_buckets) + log_approx(gq_p->w) - 1)/log_approx(gq_p->w));
+	gq_p->l = ((log_approx(gq_p->num_of_buckets)
+				+ log_approx(gq_p->w) - 1) / log_approx(gq_p->w));
 	gq_p->s = 1;
 	for (i = 0; i < gq_p->l; i++)
 		gq_p->s *= gq_p->w;
 	gq_p->s = (gq_p->s - 1) / (gq_p->w - 1);
 
-	gq_p->buckets =
-		vmalloc_user(gq_p->num_of_buckets * sizeof (struct gq_bucket));
-	if (!gq_p->buckets) {
-		printk(KERN_DEBUG "NO BUCKETS \n");
-	}
-	gq_p->meta1 =
-		vmalloc_user(gq_p->s * sizeof (struct curvature_desc));
-	if (!gq_p->meta1) {
-		printk(KERN_DEBUG "NO META1 \n");
-	}
-	gq_p->meta2 =
-		vmalloc_user(gq_p->s * sizeof (struct curvature_desc));
-	if (!gq_p->meta2) {
-		printk(KERN_DEBUG "NO META2 \n");
-	}
-	//gq_p->buckets = (struct gq_bucket*)kmalloc_node(sizeof(struct gq_bucket) * gq_p->num_of_buckets, GFP_KERNEL | __GFP_REPEAT | __GFP_NOWARN, netdev_queue_numa_node_read(sch->dev_queue));
-	//gq_p->meta1 = (struct curvature_desc*)kmalloc_node(sizeof(struct curvature_desc) * gq_p->s, GFP_KERNEL | __GFP_REPEAT | __GFP_NOWARN, netdev_queue_numa_node_read(sch->dev_queue));
-	//gq_p->meta2 = (struct curvature_desc*)kmalloc_node(sizeof(struct curvature_desc) * gq_p->s, GFP_KERNEL | __GFP_REPEAT | __GFP_NOWARN, netdev_queue_numa_node_read(sch->dev_queue));
-	//memset(gq_p->meta1, 0, sizeof(struct curvature_desc)*gq_p->s);
-	//memset(gq_p->meta2, 0, sizeof(struct curvature_desc)*gq_p->s);
-	//gq_p->meta_tmp = (struct precalc_a_b*)kmalloc_node(sizeof(struct precalc_a_b) * (gq_p->w + 1), GFP_KERNEL | __GFP_REPEAT | __GFP_NOWARN, netdev_queue_numa_node_read(sch->dev_queue));
+	gq_p->buckets = kmalloc_node(sizeof(struct gq_bucket) * gq_p->num_of_buckets,
+			GFP_KERNEL | __GFP_REPEAT | __GFP_NOWARN,
+			netdev_queue_numa_node_read(sch->dev_queue));
 
-	gq_p->meta_tmp =
-		vmalloc_user( (gq_p->w + 1) * sizeof (struct precalc_a_b));
+	gq_p->meta1 = kmalloc_node(sizeof(struct curvature_desc) * gq_p->s,
+			GFP_KERNEL | __GFP_REPEAT | __GFP_NOWARN,
+			netdev_queue_numa_node_read(sch->dev_queue));
+	gq_p->meta2 = kmalloc_node(sizeof(struct curvature_desc) * gq_p->s,
+			GFP_KERNEL | __GFP_REPEAT | __GFP_NOWARN,
+			netdev_queue_numa_node_read(sch->dev_queue));
+	memset(gq_p->meta1, 0, sizeof(struct curvature_desc)*gq_p->s);
+	memset(gq_p->meta2, 0, sizeof(struct curvature_desc)*gq_p->s);
 
-	if (!gq_p->meta_tmp) {
-		printk(KERN_DEBUG "NO META tmp \n");
-	}
+	gq_p->meta_tmp = kmalloc_node(sizeof(struct precalc_a_b) * (gq_p->w + 1),
+			GFP_KERNEL | __GFP_REPEAT | __GFP_NOWARN,
+			netdev_queue_numa_node_read(sch->dev_queue));
 
 	for (i = 0; i <= base; i++) {
 		if (!i)
