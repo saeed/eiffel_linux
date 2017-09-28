@@ -215,32 +215,32 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb, uint64_t ts) {
 	int im = 0;
 	ts = ts / gq->grnlrty;
 	if (ts <= gq->head_ts) {
-		printk(KERN_DEBUG "SCHED IN PAST %ld %ld\n", ts, gq->head_ts);
+		//printk(KERN_DEBUG "SCHED IN PAST %ld %ld\n", ts, gq->head_ts);
 		ts = gq->head_ts;
 	} else if (ts > gq->head_ts + gq->num_of_buckets - 1) {
-		printk(KERN_DEBUG "HORIZON NOT ENOUGH, %ld, %ld, %ld\n",
-				ts, gq->head_ts, gq->head_ts + gq->num_of_buckets - 1);
+		//printk(KERN_DEBUG "HORIZON NOT ENOUGH, %ld, %ld, %ld\n",
+		//ts, gq->head_ts, gq->head_ts + gq->num_of_buckets - 1);
 		ts = gq->head_ts + gq->num_of_buckets - 1;
-	} else {
-		printk(KERN_DEBUG "NORMAL INSERTION %ld\n", ts);
-	}
+	} //else {
+		//printk(KERN_DEBUG "NORMAL INSERTION %ld\n", ts);
+	//}
 	gq->num_of_elements++;
 	im = gq->num_of_buckets - ts - 1;
 	if (im < 0)
 		im = im + gq->num_of_buckets * (gq->head_ts/gq->num_of_buckets + 1);
 	index = im % gq->num_of_buckets;
 	gq_inc_meta(gq, &index);
-	printk(KERN_DEBUG "INDEX OF INSERTION %ld \n", index);
+	//printk(KERN_DEBUG "INDEX OF INSERTION %ld \n", index);
 	bucket_queue_add(&(gq->buckets[index]), skb);
 }
 
 static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 	u64 min_ts = gq_index_to_ts(gq, gq_get_min_index(gq));
 	now = now / gq->grnlrty;
-	printk(KERN_DEBUG "EXTRACTION REQUEST %ld, %ld\n", now, gq->head_ts);
+	//printk(KERN_DEBUG "EXTRACTION REQUEST %ld, %ld\n", now, gq->head_ts);
 	if ( now > min_ts + gq->grnlrty) {
 		gq->head_ts = min_ts;
-		printk(KERN_DEBUG "FAST ADVANCE \n");
+		//printk(KERN_DEBUG "FAST ADVANCE \n");
 	}
 
 	while (now >= gq->head_ts) {
@@ -260,7 +260,7 @@ static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 			gq_dec_meta(gq, &index);
 
 			gq->num_of_elements--;
-			printk(KERN_DEBUG "FOUND PACKET AT INDEX %ld\n", index);
+			//printk(KERN_DEBUG "FOUND PACKET AT INDEX %ld\n", index);
 			return tmp;
 		}
 	}
@@ -340,7 +340,7 @@ static int gq_enqueue(struct sk_buff *skb, struct Qdisc *sch,
 
 	qdisc_qstats_backlog_inc(sch, skb);
 	if (skb->trans_time) {
-		printk(KERN_DEBUG "insertion time %ld\n", skb->trans_time);
+		//printk(KERN_DEBUG "insertion time %ld\n", skb->trans_time);
 		tx_time = skb->trans_time;
 	} else {
 		tx_time = now;
@@ -361,12 +361,12 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 
 	skb = gq_extract(q->gq, now);
 	if(!skb) {
-		printk(KERN_DEBUG "NO PACKETS IN GQ %ld %ld\n", q->gq->num_of_elements, sch->q.qlen);
+		//printk(KERN_DEBUG "NO PACKETS IN GQ %ld %ld\n", q->gq->num_of_elements, sch->q.qlen);
 		if (q->gq->num_of_elements) {
 			//qdisc_watchdog_cancel(&q->watchdog);
 			tx_time = gq_index_to_ts(q->gq, gq_get_min_index(q->gq));
 			qdisc_watchdog_schedule_ns(&q->watchdog, tx_time);
-			printk(KERN_DEBUG "SCHEDULED WAKE UP AT %ld \n", tx_time);
+			//printk(KERN_DEBUG "SCHEDULED WAKE UP AT %ld \n", tx_time);
 			q->time_next_delayed_wake_up = tx_time;
 		}
 		return NULL;
