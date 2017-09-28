@@ -324,10 +324,12 @@ static int gq_enqueue(struct sk_buff *skb, struct Qdisc *sch,
 		return qdisc_drop(skb, sch, to_free);
 
 	qdisc_qstats_backlog_inc(sch, skb);
-	if (skb->trans_time)
+	if (skb->trans_time) {
+		printk(KERN_DEBUG "insertion time %ld\n", skb->trans_time);
 		tx_time = skb->trans_time;
-	else
+	} else {
 		tx_time = now;
+	}
 
 	gq_push (q->gq, skb, tx_time);
 
@@ -398,8 +400,8 @@ static int gq_init(struct Qdisc *sch, struct nlattr *opt)
 	struct gq_sched_data *q = qdisc_priv(sch);
 	struct gradient_queue *gq_p;
 	int i = 0;
-	u64 granularity = 8000;
-	u64 horizon = 100000000;
+	u64 granularity = 10000;
+	u64 horizon = 10000000000;
 	u32 base = 32;
 	u64 now = ktime_get_ns();
 
