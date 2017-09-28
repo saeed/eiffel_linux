@@ -213,7 +213,7 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb, uint64_t ts) {
 	ts = ts / gq->grnlrty;
 	if (ts <= gq->head_ts) {
 		ts = gq->head_ts;
-		printk(KERN_DEBUG "SCHED IN PAST\n")
+		printk(KERN_DEBUG "SCHED IN PAST\n");
 	} else if (ts > gq->head_ts + gq->num_of_buckets - 1) {
 		ts = gq->head_ts + gq->num_of_buckets - 1;
 		printk(KERN_DEBUG "HORIZON NOT ENOUGH\n");
