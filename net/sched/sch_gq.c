@@ -216,7 +216,9 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb, uint64_t ts) {
 		printk(KERN_DEBUG "SCHED IN PAST\n");
 	} else if (ts > gq->head_ts + gq->num_of_buckets - 1) {
 		ts = gq->head_ts + gq->num_of_buckets - 1;
-		printk(KERN_DEBUG "HORIZON NOT ENOUGH, %ld, %ld\n", ts, gq->head_ts, gq->head_ts + gq->num_of_buckets - 1);
+		printk(KERN_DEBUG "HORIZON NOT ENOUGH, %ld, %ld, %ld\n", ts, gq->head_ts, gq->head_ts + gq->num_of_buckets - 1);
+	} else {
+		printk(KERN_DEBUG "NORMAL INSERTION\n");
 	}
 	gq->num_of_elements++;
 	im = gq->num_of_buckets - ts - 1;
@@ -224,11 +226,13 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb, uint64_t ts) {
 		im = im + gq->num_of_buckets * (gq->head_ts/gq->num_of_buckets + 1);
 	index = im % gq->num_of_buckets;
 	gq_inc_meta(gq, &index);
+	printk(KERN_DEBUG "INDEX OF INSERTION %ld \n", index);
 	bucket_queue_add(&(gq->buckets[index]), skb);
 }
 
 static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 	now = now / gq->grnlrty;
+	printk(KERN_DEBUG "EXTRACTION REQUEST %ld, %ld", now, gq->head_ts);
 	while (now >= gq->head_ts) {
 		int len;
 		uint64_t index = gq->head_ts;
