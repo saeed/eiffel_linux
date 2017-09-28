@@ -402,7 +402,7 @@ static void gq_destroy(struct Qdisc *sch)
 static int gq_init(struct Qdisc *sch, struct nlattr *opt)
 {
 	struct gq_sched_data *q = qdisc_priv(sch);
-	struct gradient_queue *gq_p = q->gq;
+	struct gradient_queue *gq_p;
 	int i = 0;
 	u64 granularity = 10000;
 	u64 horizon = 1000000;
@@ -412,7 +412,7 @@ static int gq_init(struct Qdisc *sch, struct nlattr *opt)
 	//gq_p = kmalloc(1 * sizeof (struct gradient_queue), GFP_KERNEL | __GFP_REPEAT);
 	gq_p = (struct gradient_queue*)kmalloc_node(sizeof(struct gradient_queue), GFP_KERNEL | __GFP_REPEAT | __GFP_NOWARN, netdev_queue_numa_node_read(sch->dev_queue));
 
-	if (!gq_p || !q->gq) {
+	if (!gq_p) {
 		printk(KERN_DEBUG "couldn't allocate memory\n");
 		return -1;
 	}
@@ -469,7 +469,7 @@ static int gq_init(struct Qdisc *sch, struct nlattr *opt)
 		gq_p->meta2[i].abcI = ((i - 1) / gq_p->w);
 		gq_p->meta2[i].wwI = (i-1) % gq_p->w;
 	}
-
+	q->gq = gq_p;
 	sch->limit		= 10000;
 	q->time_next_delayed_wake_up = now;
 	qdisc_watchdog_init(&q->watchdog, sch);
