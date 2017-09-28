@@ -95,6 +95,9 @@ struct gq_sched_data {
 	struct qdisc_watchdog watchdog;
 };
 
+int64_t gq_get_min_index(struct gradient_queue *gq);
+int64_t gq_index_to_ts (struct gradient_queue *gq, int64_t index);
+
 // Underlying linked list
 
 static struct sk_buff *gq_bucket_dequeue_head(struct gq_bucket *bucket)
@@ -232,7 +235,7 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb, uint64_t ts) {
 }
 
 static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
-	u64 min_ts = gq_index_to_ts(q->gq, gq_get_min_index(q->gq));
+	u64 min_ts = gq_index_to_ts(gq, gq_get_min_index(gq));
 	now = now / gq->grnlrty;
 	printk(KERN_DEBUG "EXTRACTION REQUEST %ld, %ld\n", now, gq->head_ts);
 	if ( now > min_ts + gq->grnlrty) {
