@@ -361,7 +361,7 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 
 	skb = gq_extract(q->gq, now);
 	if(!skb) {
-		printk(KERN_DEBUG "NO PACKETS IN GQ\n");
+		printk(KERN_DEBUG "NO PACKETS IN GQ %ld %ld\n", q->gq->num_of_elements, sch->q.qlen);
 		if (q->gq->num_of_elements) {
 			//qdisc_watchdog_cancel(&q->watchdog);
 			tx_time = gq_index_to_ts(q->gq, gq_get_min_index(q->gq));
@@ -371,6 +371,7 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 		}
 		return NULL;
 	}
+	sch->q.qlen--;
 
 	qdisc_qstats_backlog_dec(sch, skb);
 	qdisc_bstats_update(sch, skb);
