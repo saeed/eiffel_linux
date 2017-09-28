@@ -212,14 +212,14 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb, uint64_t ts) {
 	int im = 0;
 	ts = ts / gq->grnlrty;
 	if (ts <= gq->head_ts) {
+		printk(KERN_DEBUG "SCHED IN PAST %ld\n", ts, gq->head_ts);
 		ts = gq->head_ts;
-		//printk(KERN_DEBUG "SCHED IN PAST\n");
 	} else if (ts > gq->head_ts + gq->num_of_buckets - 1) {
 		printk(KERN_DEBUG "HORIZON NOT ENOUGH, %ld, %ld, %ld\n",
 				ts, gq->head_ts, gq->head_ts + gq->num_of_buckets - 1);
 		ts = gq->head_ts + gq->num_of_buckets - 1;
 	} else {
-		printk(KERN_DEBUG "NORMAL INSERTION\n");
+		printk(KERN_DEBUG "NORMAL INSERTION %ld\n", ts);
 	}
 	gq->num_of_elements++;
 	im = gq->num_of_buckets - ts - 1;
