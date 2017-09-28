@@ -354,7 +354,7 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 		if (q->gq->num_of_elements) {
 			qdisc_watchdog_cancel(&q->watchdog);
 			tx_time = gq_index_to_ts(q->gq, gq_get_min_index(q->gq));
-			qdisc_watchdog_schedule_ns(&q->watchdog, tx_time);
+			//qdisc_watchdog_schedule_ns(&q->watchdog, tx_time);
 			q->time_next_delayed_wake_up = tx_time;
 		}
 		return NULL;
