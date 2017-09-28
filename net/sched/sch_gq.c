@@ -215,7 +215,8 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb, uint64_t ts) {
 		ts = gq->head_ts;
 		//printk(KERN_DEBUG "SCHED IN PAST\n");
 	} else if (ts > gq->head_ts + gq->num_of_buckets - 1) {
-		//printk(KERN_DEBUG "HORIZON NOT ENOUGH, %ld, %ld, %ld\n", ts, gq->head_ts, gq->head_ts + gq->num_of_buckets - 1);
+		//printk(KERN_DEBUG "HORIZON NOT ENOUGH, %ld, %ld, %ld\n",
+		//ts, gq->head_ts, gq->head_ts + gq->num_of_buckets - 1);
 		ts = gq->head_ts + gq->num_of_buckets - 1;
 	} //else {
 		//printk(KERN_DEBUG "NORMAL INSERTION\n");
@@ -406,7 +407,7 @@ static int gq_init(struct Qdisc *sch, struct nlattr *opt)
 	struct gq_sched_data *q = qdisc_priv(sch);
 	struct gradient_queue *gq_p;
 	int i = 0;
-	u64 granularity = 1000000;
+	u64 granularity = 10000;
 	u64 horizon = 1000000000;
 	u32 base = 32;
 	u64 now = ktime_get_ns();
@@ -437,8 +438,10 @@ static int gq_init(struct Qdisc *sch, struct nlattr *opt)
 	gq_p->meta2 = kmalloc_node(sizeof(struct curvature_desc) * gq_p->s,
 			GFP_KERNEL | __GFP_REPEAT | __GFP_NOWARN,
 			netdev_queue_numa_node_read(sch->dev_queue));
-	memset(gq_p->meta1, 0, sizeof(struct curvature_desc)*gq_p->s);
-	memset(gq_p->meta2, 0, sizeof(struct curvature_desc)*gq_p->s);
+
+	memset(gq_p->buckets, 0, sizeof(struct gq_bucket) * gq_p->num_of_buckets);
+	memset(gq_p->meta1, 0, sizeof(struct curvature_desc) * gq_p->s);
+	memset(gq_p->meta2, 0, sizeof(struct curvature_desc) * gq_p->s);
 
 	gq_p->meta_tmp = kmalloc_node(sizeof(struct precalc_a_b) * (gq_p->w + 1),
 			GFP_KERNEL | __GFP_REPEAT | __GFP_NOWARN,
