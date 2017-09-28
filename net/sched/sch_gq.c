@@ -250,6 +250,7 @@ static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 			gq_dec_meta(gq, &index);
 
 			gq->num_of_elements--;
+			printk(KERN_DEBUG "FOUND PACKET AT INDEX %ld\n", index);
 			return tmp;
 		}
 	}
