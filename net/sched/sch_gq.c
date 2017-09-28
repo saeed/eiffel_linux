@@ -232,7 +232,7 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb, uint64_t ts) {
 
 static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 	now = now / gq->grnlrty;
-	printk(KERN_DEBUG "EXTRACTION REQUEST %ld, %ld", now, gq->head_ts);
+	printk(KERN_DEBUG "EXTRACTION REQUEST %ld, %ld\n", now, gq->head_ts);
 	while (now >= gq->head_ts) {
 		int len;
 		uint64_t index = gq->head_ts;
@@ -241,7 +241,7 @@ static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 		if ((int64_t)index < 0)
 			index = index + gq->num_of_buckets * (gq->head_ts/gq->num_of_buckets + 1);
 		index = index % gq->num_of_buckets;
-		printk(KERN_DEBUG "ATTEMPTING TO EXTRACT FROM INDEX %ld \n", index);
+		//printk(KERN_DEBUG "ATTEMPTING TO EXTRACT FROM INDEX %ld \n", index);
 		len = gq->buckets[index].qlen;
 		if (!len) {
 			gq->head_ts++;
