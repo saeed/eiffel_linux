@@ -343,6 +343,7 @@ static int gq_enqueue(struct sk_buff *skb, struct Qdisc *sch,
 		//printk(KERN_DEBUG "insertion time %ld\n", skb->trans_time);
 		tx_time = skb->trans_time;
 	} else {
+		skb->trans_time = now;
 		tx_time = now;
 	}
 
@@ -363,12 +364,13 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 	if(!skb) {
 		//printk(KERN_DEBUG "NO PACKETS IN GQ %ld %ld\n", q->gq->num_of_elements, sch->q.qlen);
 		if (q->gq->num_of_elements) {
-			//qdisc_watchdog_cancel(&q->watchdog);
-			tx_time = gq_index_to_ts(q->gq, gq_get_min_index(q->gq));
-			if (tx_time > now + q->gq->grnlrty * 1)
+			u64 index_of_min_pkt = gq_get_min_index(q->gq);
+			if (gq->buckets[index_of_min_pkt].head) {
+				tx_time = gq->buckets[index].head->trans_time;
 				qdisc_watchdog_schedule_ns(&q->watchdog, tx_time);
-			//printk(KERN_DEBUG "SCHEDULED WAKE UP AT %ld \n", tx_time);
-			q->time_next_delayed_wake_up = tx_time;
+				//printk(KERN_DEBUG "SCHEDULED WAKE UP AT %ld \n", tx_time);
+				q->time_next_delayed_wake_up = tx_time;
+			}
 		}
 		return NULL;
 	}
