@@ -366,7 +366,7 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 		if (q->gq->num_of_elements) {
 			u64 index_of_min_pkt = gq_get_min_index(q->gq);
 			if (q->gq->buckets[index_of_min_pkt].head) {
-				tx_time = q->gq->buckets[index].head->trans_time;
+				tx_time = q->gq->buckets[index_of_min_pkt].head->trans_time;
 				qdisc_watchdog_schedule_ns(&q->watchdog, tx_time);
 				//printk(KERN_DEBUG "SCHEDULED WAKE UP AT %ld \n", tx_time);
 				q->time_next_delayed_wake_up = tx_time;
