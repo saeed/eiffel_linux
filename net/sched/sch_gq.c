@@ -235,13 +235,13 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb, uint64_t ts) {
 }
 
 static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
-	u64 min_ts = gq_index_to_ts(gq, gq_get_min_index(gq));
+	//u64 min_ts = gq_index_to_ts(gq, gq_get_min_index(gq));
 	now = now / gq->grnlrty;
 	//printk(KERN_DEBUG "EXTRACTION REQUEST %ld, %ld\n", now, gq->head_ts);
-	if ( now > min_ts + gq->grnlrty) {
-		gq->head_ts = min_ts;
+	//if ( now > min_ts + gq->grnlrty) {
+	//	gq->head_ts = min_ts;
 		//printk(KERN_DEBUG "FAST ADVANCE \n");
-	}
+	//}
 
 	while (now >= gq->head_ts) {
 		int len;
@@ -417,7 +417,7 @@ static int gq_init(struct Qdisc *sch, struct nlattr *opt)
 	struct gq_sched_data *q = qdisc_priv(sch);
 	struct gradient_queue *gq_p;
 	int i = 0;
-	u64 granularity = 1000000;
+	u64 granularity = 100000;
 	u64 horizon = 1000000000;
 	u32 base = 32;
 	u64 now = ktime_get_ns();
@@ -471,7 +471,7 @@ static int gq_init(struct Qdisc *sch, struct nlattr *opt)
 		gq_p->meta2[i].wwI = (i-1) % gq_p->w;
 	}
 	q->gq = gq_p;
-	sch->limit		= 10000;
+	sch->limit		= 1000000;
 	q->time_next_delayed_wake_up = now;
 	qdisc_watchdog_init(&q->watchdog, sch);
 
