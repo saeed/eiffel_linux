@@ -360,6 +360,9 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 	u64 tx_time, now = ktime_get_ns();
 	struct sk_buff *skb;
 
+	if(q->watchdog.last_expires > now)
+		now = q->watchdog.last_expires;
+
 	skb = gq_extract(q->gq, now);
 	if(!skb) {
 		//printk(KERN_DEBUG "NO PACKETS IN GQ %ld %ld\n", q->gq->num_of_elements, sch->q.qlen);
