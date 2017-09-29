@@ -235,13 +235,13 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb, uint64_t ts) {
 }
 
 static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
-	//u64 min_ts = gq_index_to_ts(gq, gq_get_min_index(gq));
+	u64 min_ts = gq_index_to_ts(gq, gq_get_min_index(gq));
 	now = now / gq->grnlrty;
 	//printk(KERN_DEBUG "EXTRACTION REQUEST %ld, %ld\n", now, gq->head_ts);
-	//if ( now > min_ts + gq->grnlrty) {
-	//	gq->head_ts = min_ts;
+	if ( now > min_ts + gq->grnlrty) {
+		gq->head_ts = min_ts;
 		//printk(KERN_DEBUG "FAST ADVANCE \n");
-	//}
+	}
 
 	while (now >= gq->head_ts) {
 		int len;
@@ -365,7 +365,7 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 		if (q->gq->num_of_elements) {
 			//qdisc_watchdog_cancel(&q->watchdog);
 			tx_time = gq_index_to_ts(q->gq, gq_get_min_index(q->gq));
-			if (tx_time > now + q->gq->grnlrty * 4)
+			if (tx_time > now + q->gq->grnlrty * 2)
 				qdisc_watchdog_schedule_ns(&q->watchdog, tx_time);
 			//printk(KERN_DEBUG "SCHEDULED WAKE UP AT %ld \n", tx_time);
 			q->time_next_delayed_wake_up = tx_time;
