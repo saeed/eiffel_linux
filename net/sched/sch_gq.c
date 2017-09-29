@@ -363,7 +363,7 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 	skb = gq_extract(q->gq, now);
 	if(!skb) {
 		//printk(KERN_DEBUG "NO PACKETS IN GQ %ld %ld\n", q->gq->num_of_elements, sch->q.qlen);
-		if (q->qlen) {
+		if (sch->q.qlen) {
 			u64 index_of_min_pkt = gq_get_min_index(q->gq);
 			if (q->gq->buckets[index_of_min_pkt].head) {
 				tx_time = q->gq->buckets[index_of_min_pkt].head->trans_time;
