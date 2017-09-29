@@ -369,10 +369,10 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 			if (q->gq->buckets[index_of_min_pkt].head) {
 				tx_time = q->gq->buckets[index_of_min_pkt].head->trans_time;
 				if (q->visited_by_timer)
-					printk(KERN_DEBUG "SCHEDULED WAKE UP AT %ld %ld %ld %ld %ld\n",
+					printk(KERN_DEBUG "SCHEDULED WAKE UP AT %ld %ld %ld %ld %ld %ld\n",
 							tx_time, q->watchdog.last_expires,
 							index_of_min_pkt, time_of_min_pkt,
-							q->gq->head_ts);
+							q->gq->head_ts, now);
 
 				qdisc_watchdog_schedule_ns(&q->watchdog, tx_time);
 				//printk(KERN_DEBUG "SCHEDULED WAKE UP AT %ld \n", tx_time);
