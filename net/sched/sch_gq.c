@@ -360,22 +360,18 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 	u64 tx_time, now = ktime_get_ns();
 	struct sk_buff *skb;
 
-	if(q->watchdog.last_expires > now)
-		now = q->watchdog.last_expires;
-
 	skb = gq_extract(q->gq, now);
 	if(!skb) {
 		//printk(KERN_DEBUG "NO PACKETS IN GQ %ld %ld\n", q->gq->num_of_elements, sch->q.qlen);
-		if (sch->q.qlen) {
 			u64 index_of_min_pkt = gq_get_min_index(q->gq);
 			u64 time_of_min_pkt = gq_index_to_ts(q->gq, index_of_min_pkt);
 			if (q->gq->buckets[index_of_min_pkt].head) {
 				tx_time = q->gq->buckets[index_of_min_pkt].head->trans_time;
-				if (q->visited_by_timer)
+				/*if (q->visited_by_timer)
 					printk(KERN_DEBUG "SCHEDULED WAKE UP AT %ld %ld %ld %ld %ld %ld\n",
 							tx_time, q->watchdog.last_expires,
 							index_of_min_pkt, time_of_min_pkt,
-							q->gq->head_ts, now);
+							q->gq->head_ts, now);*/
 
 				qdisc_watchdog_schedule_ns(&q->watchdog, tx_time);
 				//printk(KERN_DEBUG "SCHEDULED WAKE UP AT %ld \n", tx_time);
