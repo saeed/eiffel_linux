@@ -90,7 +90,7 @@ struct gradient_queue {
 
 struct gq_sched_data {
 	u64		time_next_delayed_wake_up;
-
+	u32		visited_by_timer;
 	struct gradient_queue *gq;
 	struct qdisc_watchdog watchdog;
 };
@@ -235,13 +235,13 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb, uint64_t ts) {
 }
 
 static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
-	u64 min_ts = gq_index_to_ts(gq, gq_get_min_index(gq));
+	//u64 min_ts = gq_index_to_ts(gq, gq_get_min_index(gq));
 	now = now / gq->grnlrty;
 	//printk(KERN_DEBUG "EXTRACTION REQUEST %ld, %ld\n", now, gq->head_ts);
-	if ( now > min_ts + gq->grnlrty) {
-		gq->head_ts = min_ts;
+	//if ( now > min_ts + gq->grnlrty) {
+	//	gq->head_ts = min_ts;
 		//printk(KERN_DEBUG "FAST ADVANCE \n");
-	}
+	//}
 
 	while (now >= gq->head_ts) {
 		int len;
@@ -363,17 +363,23 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 	skb = gq_extract(q->gq, now);
 	if(!skb) {
 		//printk(KERN_DEBUG "NO PACKETS IN GQ %ld %ld\n", q->gq->num_of_elements, sch->q.qlen);
-		if (q->gq->num_of_elements) {
+		if (q->qlen) {
 			u64 index_of_min_pkt = gq_get_min_index(q->gq);
 			if (q->gq->buckets[index_of_min_pkt].head) {
 				tx_time = q->gq->buckets[index_of_min_pkt].head->trans_time;
+				if (q->visited_by_timer)
+					printk(KERN_DEBUG "SCHEDULED WAKE UP AT %ld %ld %ld\n",
+							tx_time, q->watchdog.last_expires, index_of_min_pkt);
+
 				qdisc_watchdog_schedule_ns(&q->watchdog, tx_time);
 				//printk(KERN_DEBUG "SCHEDULED WAKE UP AT %ld \n", tx_time);
 				q->time_next_delayed_wake_up = tx_time;
+				q->visited_by_timer = 1;
 			}
 		}
 		return NULL;
 	}
+	q->visited_by_timer = 0;
 	sch->q.qlen--;
 
 	qdisc_qstats_backlog_dec(sch, skb);
@@ -474,6 +480,7 @@ static int gq_init(struct Qdisc *sch, struct nlattr *opt)
 		gq_p->meta2[i].wwI = (i-1) % gq_p->w;
 	}
 	q->gq = gq_p;
+	q->visited_by_timer = 0;
 	sch->limit		= 1000000;
 	q->time_next_delayed_wake_up = now;
 	qdisc_watchdog_init(&q->watchdog, sch);
