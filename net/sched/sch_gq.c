@@ -373,7 +373,7 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 							index_of_min_pkt, time_of_min_pkt,
 							q->gq->head_ts, now);*/
 
-			qdisc_watchdog_schedule_ns(&q->watchdog, tx_time);
+			//qdisc_watchdog_schedule_ns(&q->watchdog, tx_time);
 			//printk(KERN_DEBUG "SCHEDULED WAKE UP AT %ld \n", tx_time);
 			q->time_next_delayed_wake_up = tx_time;
 			q->visited_by_timer = 1;
