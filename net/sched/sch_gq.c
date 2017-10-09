@@ -374,8 +374,8 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 							index_of_min_pkt, time_of_min_pkt,
 							q->gq->head_ts, now);*/
 
-			if (q->visited_by_timer + gq->grnlrty > now)
-				qdisc_watchdog_schedule_ns(&q->watchdog, tx_time + gq->grnlrty);
+			if (q->visited_by_timer + q->gq->grnlrty > now)
+				qdisc_watchdog_schedule_ns(&q->watchdog, tx_time + q->gq->grnlrty);
 			else
 				qdisc_watchdog_schedule_ns(&q->watchdog, tx_time);
 
