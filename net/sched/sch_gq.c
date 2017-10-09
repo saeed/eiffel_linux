@@ -90,7 +90,7 @@ struct gradient_queue {
 
 struct gq_sched_data {
 	u64		time_next_delayed_wake_up;
-	u32		visited_by_timer;
+	u64		visited_by_timer;
 	struct gradient_queue *gq;
 	struct qdisc_watchdog watchdog;
 };
@@ -374,10 +374,14 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 							index_of_min_pkt, time_of_min_pkt,
 							q->gq->head_ts, now);*/
 
-			qdisc_watchdog_schedule_ns(&q->watchdog, tx_time);
+			if (q->visited_by_timer + gq->grnlrty > now)
+				qdisc_watchdog_schedule_ns(&q->watchdog, tx_time + gq->grnlrty);
+			else
+				qdisc_watchdog_schedule_ns(&q->watchdog, tx_time);
+
 			//printk(KERN_DEBUG "SCHEDULED WAKE UP AT %ld \n", tx_time);
 			q->time_next_delayed_wake_up = tx_time;
-			q->visited_by_timer = 1;
+			q->visited_by_timer = now;
 		}
 		return NULL;
 	}
