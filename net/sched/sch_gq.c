@@ -235,14 +235,14 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb, uint64_t ts) {
 }
 
 static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
-	u64 min_ts = gq_index_to_ts(gq, gq_get_min_index(gq));
-	min_ts = (min_ts + gq->grnlrty - 1) / gq->grnlrty;
+	//u64 min_ts = gq_index_to_ts(gq, gq_get_min_index(gq));
+	//min_ts = (min_ts + gq->grnlrty - 1) / gq->grnlrty;
 	now = (now + gq->grnlrty - 1) / gq->grnlrty;
 	//printk(KERN_DEBUG "EXTRACTION REQUEST %ld, %ld\n", now, gq->head_ts);
-	if ( now > min_ts + gq->grnlrty) {
-		gq->head_ts = min_ts;
+	//if ( now > min_ts + gq->grnlrty) {
+	//	gq->head_ts = min_ts;
 		//printk(KERN_DEBUG "FAST ADVANCE \n");
-	}
+	//}
 
 	while (now >= gq->head_ts) {
 		int len;
@@ -428,7 +428,7 @@ static int gq_init(struct Qdisc *sch, struct nlattr *opt)
 	struct gq_sched_data *q = qdisc_priv(sch);
 	struct gradient_queue *gq_p;
 	int i = 0;
-	u64 granularity =   50000;
+	u64 granularity =  100000;
 	u64 horizon =   500000000;
 	u32 base = 32;
 	u64 now = ktime_get_ns();
