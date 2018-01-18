@@ -118,7 +118,7 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 		meta = gq->meta2;
 		buckets = gq->buffer_buckets;
 	}
-
+	index = gq->horizon - index;
 	printk(KERN_DEBUG "index pushed %ld\n", index);
 
 	if (!buckets[index].qlen) {
@@ -184,7 +184,7 @@ static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 		base_ts = gq->buffer_ts;
 	}
 
-	skb_ts = (index * gq->grnlrty) + base_ts;
+	skb_ts = ((gq->horizon - index) * gq->grnlrty) + base_ts;
 
 	if (skb_ts > now) {
 		return NULL;
@@ -265,7 +265,7 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 			base_ts = q->gq->buffer_ts;
 		}
 
-		time_of_min_pkt = (index * q->gq->grnlrty) + base_ts;
+		time_of_min_pkt = ((gq->horizon - index) * q->gq->grnlrty) + base_ts;
 		qdisc_watchdog_schedule_ns(&q->watchdog, time_of_min_pkt);
 
 		return NULL;
