@@ -168,12 +168,12 @@ static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 	struct sk_buff *ret_skb;
 	
 	index = get_min_index(gq);
-
+	
 	if(!index) {
 		printk(KERN_DEBUG "WARNING! EMPTY QDISC! \n");
 		return NULL;
 	}
-
+	printk("EXTRACTING FROM INDEX %ld \n", index);
 	if (gq->meta1[0].c) {
 		meta = gq->meta1;
 		buckets = gq->main_buckets;
