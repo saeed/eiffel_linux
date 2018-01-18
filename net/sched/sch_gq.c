@@ -100,7 +100,7 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 	struct gq_bucket *buckets;
 
 	if (skb->trans_time < gq->buffer_ts) {
-		if (skb->trans_time < gq->main_ts) {
+		if (skb->trans_time <= gq->main_ts) {
 			index = 0;
 			skb->trans_time = gq->main_ts;
 		} else {
@@ -118,7 +118,7 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 		meta = gq->meta2;
 		buckets = gq->buffer_buckets;
 	}
-	index = gq->horizon - index;
+	index = gq->horizon - index + 1;
 	printk(KERN_DEBUG "index pushed %ld\n", index);
 
 	if (!buckets[index].qlen) {
