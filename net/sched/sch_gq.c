@@ -119,6 +119,8 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 		buckets = gq->buffer_buckets;
 	}
 
+	printk(KERN_DEBUG "index pushed %ld\n", index);
+
 	if (!buckets[index].qlen) {
 		int done = 0, i;
 		uint64_t parentI = ((gq->s + index - 1) / gq->w);
