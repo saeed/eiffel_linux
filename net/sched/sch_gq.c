@@ -265,7 +265,7 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 			base_ts = q->gq->buffer_ts;
 		}
 
-		time_of_min_pkt = ((gq->horizon - index) * q->gq->grnlrty) + base_ts;
+		time_of_min_pkt = ((q->gq->horizon - index) * q->gq->grnlrty) + base_ts;
 		qdisc_watchdog_schedule_ns(&q->watchdog, time_of_min_pkt);
 
 		return NULL;
