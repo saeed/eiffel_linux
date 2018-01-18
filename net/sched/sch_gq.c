@@ -1,38 +1,3 @@
-/*
- * net/sched/sch_fq.c Fair Queue Packet Scheduler (per flow pacing)
- *
- *  Copyright (C) 2013-2015 Eric Dumazet <edumazet@google.com>
- *
- *	This program is free software; you can redistribute it and/or
- *	modify it under the terms of the GNU General Public License
- *	as published by the Free Software Foundation; either version
- *	2 of the License, or (at your option) any later version.
- *
- *  Meant to be mostly used for locally generated traffic :
- *  Fast classification depends on skb->sk being set before reaching us.
- *  If not, (router workload), we use rxhash as fallback, with 32 bits wide hash.
- *  All packets belonging to a socket are considered as a 'flow'.
- *
- *  Flows are dynamically allocated and stored in a hash table of RB trees
- *  They are also part of one Round Robin 'queues' (new or old flows)
- *
- *  Burst avoidance (aka pacing) capability :
- *
- *  Transport (eg TCP) can set in sk->sk_pacing_rate a rate, enqueue a
- *  bunch of packets, and this packet scheduler adds delay between
- *  packets to respect rate limitation.
- *
- *  enqueue() :
- *   - lookup one RB tree (out of 1024 or more) to find the flow.
- *     If non existent flow, create it, add it to the tree.
- *     Add skb to the per flow list of skb (fifo).
- *   - Use a special fifo for high prio packets
- *
- *  dequeue() : serves flows in Round Robin
- *  Note : When a flow becomes empty, we do not immediately remove it from
- *  rb trees, for performance reasons (its expected to send additional packets,
- *  or SLAB cache will reuse socket for another flow)
- */
 
 #include <linux/module.h>
 #include <linux/types.h>
@@ -57,7 +22,7 @@
  */
 struct gq_bucket {
 	struct sk_buff	*head;		/* list of skbs for this flow : first skb */
-	struct sk_buff *tail;	/* last skb in the list */
+	struct sk_buff  *tail;		/* last skb in the list */
 	int		qlen;		/* number of packets in flow queue */
 };
 
@@ -75,28 +40,27 @@ struct precalc_a_b {
 };
 
 struct gradient_queue {
-	u64 head_ts;
-	u64 grnlrty;
-	u64 num_of_elements;
-	u64 num_of_buckets;
-	u64 side;
-	u64 h, w, l, s;
-	struct gq_bucket *buckets;
-	struct curvature_desc *meta1;
-	struct curvature_desc *meta2;
-	struct precalc_a_b *meta_tmp;
+	u64                    head_ts;
+	u64                    grnlrty;
+	u64                    num_of_elements;
+	u64                    num_of_buckets;
+	u64                    side;
+	u64                    h, w, l, s;
+	u64                    main_ts, buffer_ts, max_ts, horizon;
+	struct gq_bucket       *main_buckets;
+	struct gq_bucket       *buffer_buckets;
+	struct curvature_desc  *meta1;
+	struct curvature_desc  *meta2;
+	struct precalc_a_b     *meta_tmp;
 };
 
 
 struct gq_sched_data {
-	u64		time_next_delayed_wake_up;
-	u64		visited_by_timer;
-	struct gradient_queue *gq;
-	struct qdisc_watchdog watchdog;
+	u64		       time_next_delayed_wake_up;
+	u64		       visited_by_timer;
+	struct gradient_queue  *gq;
+	struct qdisc_watchdog  watchdog;
 };
-
-int64_t gq_get_min_index(struct gradient_queue *gq);
-int64_t gq_index_to_ts (struct gradient_queue *gq, int64_t index);
 
 // Underlying linked list
 
@@ -115,9 +79,7 @@ static struct sk_buff *gq_bucket_dequeue_head(struct gq_bucket *bucket)
 static void bucket_queue_add(struct gq_bucket *bucket, struct sk_buff *skb)
 {
 	struct sk_buff *head = bucket->head;
-
 	skb->next = NULL;
-
 	bucket->qlen++;
 
 	if (!head) {
@@ -130,44 +92,37 @@ static void bucket_queue_add(struct gq_bucket *bucket, struct sk_buff *skb)
 	bucket->tail = skb;
 }
 
-// Gradient queue maintenance
+// circular gradient queue
 
-struct curvature_desc *gq_side(struct gradient_queue *gq, uint64_t *in_index) {
-	uint64_t ts_index = gq->head_ts;
-	ts_index = gq->num_of_buckets - ts_index - 1;
-	if ((int64_t)ts_index < 0)
-		ts_index = ts_index + gq->num_of_buckets * (gq->head_ts/gq->num_of_buckets + 1);
-	ts_index = ts_index % gq->num_of_buckets;
-
-	if (ts_index >= *in_index) {
-		if (*in_index >= gq->num_of_buckets / 2) {
-			return gq->meta1;
-		} else {
-			return gq->meta2;
-		}
-	} else {
-		if (*in_index >= gq->num_of_buckets / 2 && ts_index >= gq->num_of_buckets / 2) {
-			*in_index = 0;
-			return gq->meta2;
-		} else if (*in_index < gq->num_of_buckets / 2 && ts_index < gq->num_of_buckets / 2) {
-			*in_index = gq->num_of_buckets / 2;
-			return gq->meta1;
-		} else {
-			return gq->meta1;
-		}
-	}
-}
-
-void gq_inc_meta(struct gradient_queue *gq, uint64_t *index) {
+void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
+	u64 index = 0;
 	struct curvature_desc *meta;
-	int i = 0;
-	int done = 0;
+	struct gq_bucket *buckets;
 
-	meta = gq_side(gq, index);
+	if (skb->trans_time < gq->buffer_ts) {
+		if (skb->trans_time < gq->main_ts) {
+			index = 0;
+			skb->trans_time = gq->main_ts;
+		} else {
+			index = (skb->trans_time - gq->main_ts) / gq->grnlrty;
+		}
+		meta = gq->meta1;
+		buckets = gq->main_buckets;
+	} else {
+		if (skb->trans_time > gq->max_ts) {
+			index = (gq->max_ts - gq->buffer_ts) / gq->grnlrty;
+			skb->trans_time = gq->max_ts;
+		} else {
+			index = (skb->trans_time - gq->buffer_ts) / gq->grnlrty;
+		}
+		meta = gq->meta2;
+		buckets = gq->buffer_buckets;
+	}
 
-	if (!gq->buckets[*index].qlen) {
-		uint64_t parentI = ((gq->s + *index - 1) / gq->w);
-		uint64_t wI = (gq->s + *index - 1) % gq->w;
+	if (!buckets[index].qlen) {
+		int done = 0, i;
+		uint64_t parentI = ((gq->s + index - 1) / gq->w);
+		uint64_t wI = (gq->s + index - 1) % gq->w;
 		for (i = 0; i < gq->l; i++) {
 			if (!done) {
 				meta[parentI].a += gq->meta_tmp[wI].a;
@@ -181,18 +136,65 @@ void gq_inc_meta(struct gradient_queue *gq, uint64_t *index) {
 			parentI = meta[parentI].abcI;
 		}
 	}
+
+	bucket_queue_add(&(buckets[index]), skb);
 }
 
-void gq_dec_meta(struct gradient_queue *gq, uint64_t *index) {
+int get_min_index (struct gradient_queue *gq) {
 	struct curvature_desc *meta;
-	int i = 0;
-	int done = 0;
+	u64 I = 0, i = 0;
+	if (gq->meta1[0].c) {
+		meta = gq->meta1;
+	} else if (gq->meta2[0].c) {
+		meta = gq->meta2;
+	} else {
+		return -1;
+	}
 
-	meta = gq_side(gq, index);
+	I = ((meta[0].b+meta[0].a-1)/(meta[0].a)) + 1;
+	for (i = 1; i < gq->l; i++) {
+		I = gq->w * I + ((meta[I].b+meta[I].a-1)/meta[I].a) + 1;
+	}
+	return I - gq->s;
+}
 
-	if (!gq->buckets[*index].qlen) {
-		uint64_t parentI = ((gq->s + *index - 1) / gq->w);
-		uint64_t wI = (gq->s + *index - 1) % gq->w;
+static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
+	struct gq_bucket *buckets;
+	struct curvature_desc *meta;
+	int index = 0;
+	u64 base_ts = 0, skb_ts = 0;
+	struct sk_buff *ret_skb;
+	
+	index = get_min_index(gq);
+
+	if(!index) {
+		printk(KERN_DEBUG "WARNING! EMPTY QDISC! \n");
+		return NULL;
+	}
+
+	if (gq->meta1[0].c) {
+		meta = gq->meta1;
+		buckets = gq->main_buckets;
+		base_ts = gq->main_ts;
+	} else {
+		meta = gq->meta2;
+		buckets = gq->buffer_buckets;
+		base_ts = gq->buffer_ts;
+	}
+
+	skb_ts = (index * gq->grnlrty) + base_ts;
+
+	if (skb_ts > now) {
+		return NULL;
+	}
+
+	gq->num_of_elements--;
+
+	ret_skb = gq_bucket_dequeue_head(&(buckets[index]));
+	if (!buckets[index].qlen) {
+		int done = 0, i;
+		uint64_t parentI = ((gq->s + index - 1) / gq->w);
+		uint64_t wI = (gq->s + index - 1) % gq->w;
 		for (i = 0; i < gq->l; i++) {
 			if (!done) {
 				meta[parentI].a -= gq->meta_tmp[wI].a;
@@ -206,149 +208,32 @@ void gq_dec_meta(struct gradient_queue *gq, uint64_t *index) {
 			parentI = meta[parentI].abcI;
 		}
 	}
+	return ret_skb;
 }
 
-// Timing Wheel wrapper
-
-void gq_push (struct gradient_queue *gq, struct sk_buff *skb, uint64_t ts) {
-	uint64_t index = 0;
-	int im = 0;
-	ts = ts / gq->grnlrty;
-	if (ts <= gq->head_ts) {
-		//printk(KERN_DEBUG "SCHED IN PAST %ld %ld\n", ts, gq->head_ts);
-		ts = gq->head_ts;
-	} else if (ts > gq->head_ts + gq->num_of_buckets - 1) {
-		//printk(KERN_DEBUG "HORIZON NOT ENOUGH, %ld, %ld, %ld\n",
-		//ts, gq->head_ts, gq->head_ts + gq->num_of_buckets - 1);
-		ts = gq->head_ts + gq->num_of_buckets - 1;
-	} //else {
-		//printk(KERN_DEBUG "NORMAL INSERTION %ld\n", ts);
-	//}
-	gq->num_of_elements++;
-	im = gq->num_of_buckets - ts - 1;
-	if (im < 0)
-		im = im + gq->num_of_buckets * (gq->head_ts/gq->num_of_buckets + 1);
-	index = im % gq->num_of_buckets;
-	gq_inc_meta(gq, &index);
-	//printk(KERN_DEBUG "INDEX OF INSERTION %ld \n", index);
-	bucket_queue_add(&(gq->buckets[index]), skb);
-}
-
-static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
-	//u64 min_ts = gq_index_to_ts(gq, gq_get_min_index(gq));
-	//min_ts = (min_ts + gq->grnlrty - 1) / gq->grnlrty;
-	now = (now + gq->grnlrty - 1) / gq->grnlrty;
-	//printk(KERN_DEBUG "EXTRACTION REQUEST %ld, %ld\n", now, gq->head_ts);
-	//if ( now > min_ts + gq->grnlrty) {
-	//	gq->head_ts = min_ts;
-		//printk(KERN_DEBUG "FAST ADVANCE \n");
-	//}
-
-	while (now >= gq->head_ts) {
-		int len;
-		uint64_t index = gq->head_ts;
-		index = gq->num_of_buckets - index - 1;
-
-		if ((int64_t)index < 0)
-			index = index + gq->num_of_buckets * (gq->head_ts/gq->num_of_buckets + 1);
-		index = index % gq->num_of_buckets;
-		//printk(KERN_DEBUG "ATTEMPTING TO EXTRACT FROM INDEX %ld \n", index);
-		len = gq->buckets[index].qlen;
-		if (!len) {
-			gq->head_ts++;
-		} else {
-			struct sk_buff *tmp = gq_bucket_dequeue_head(&(gq->buckets[index]));
-			gq_dec_meta(gq, &index);
-
-			gq->num_of_elements--;
-			//printk(KERN_DEBUG "FOUND PACKET AT INDEX %ld\n", index);
-			return tmp;
-		}
-	}
-	return NULL;
-}
-
-
-int64_t gq_get_min_index(struct gradient_queue *gq) {
-	int64_t I = 0, i = 0;
-	struct curvature_desc *meta;
-	int64_t ts_index = gq->head_ts;
-	ts_index = gq->num_of_buckets - ts_index - 1;
-	if (ts_index < 0)
-		ts_index = ts_index + gq->num_of_buckets * (gq->head_ts/gq->num_of_buckets + 1);
-	ts_index = ts_index % gq->num_of_buckets;
-
-	if (ts_index >= gq->num_of_buckets / 2 && gq->meta1[0].c > 0) {
-		meta = gq->meta1;
-	} else if (gq->meta2[0].c > 0) {
-		meta = gq->meta2;
-	} else if (gq->meta2[0].c <= 0 && gq->meta1[0].c <= 0){
-		//printf("empty queue! %ld\n", gq->num_of_elements);
-		return ts_index;
-	} else if (gq->meta2[0].c <= 0) {
-		return 0;
-	} else if (gq->meta2[0].c <= 0) {
-		return gq->num_of_buckets / 2;
-	} else {
-		//printf("SHOULD NEVER HAPPEN\n");
-	}
-
-	I = ((meta[0].b+meta[0].a-1)/(meta[0].a)) + 1;
-	for (i = 1; i < gq->l; i++) {
-		I = gq->w * I + ((meta[I].b+meta[I].a-1)/meta[I].a) + 1;
-	}
-	return I - gq->s;
-}
-
-int64_t gq_index_to_ts (struct gradient_queue *gq, int64_t index) {
-	int64_t l = 0, p = 0;
-	l = (gq->num_of_buckets - index - 1);
-	p = gq->head_ts / gq->num_of_buckets;
-	while (p > 0) {
-		l += gq->num_of_buckets;
-		p--;
-	}
-	return l * gq->grnlrty;
-}
-
-// initializer
-
-unsigned int log_approx(uint32_t v) {
-	const unsigned int b[] = {0x2, 0xC, 0xF0, 0xFF00, 0xFFFF0000};
-	const unsigned int S[] = {1, 2, 4, 8, 16};
-	int i;
-
-	unsigned int r = 0; // result of log2(v) will go here
-	for (i = 4; i >= 0; i--) // unroll for speed...
-	{
-  	if (v & b[i])
-  	{
-    	v >>= S[i];
-    	r |= S[i];
-  	}
-	}
-	return r;
-}
+// qdisc api
 
 static int gq_enqueue(struct sk_buff *skb, struct Qdisc *sch,
 		      struct sk_buff **to_free)
 {
 	struct gq_sched_data *q = qdisc_priv(sch);
-	u64 tx_time, now = ktime_get_ns();
+	u64 now = ktime_get_ns();
+
+	if (!sch->q.qlen) {
+		q->gq->main_ts = now;
+		q->gq->buffer_ts = now + q->gq->horizon;
+		q->gq->max_ts = now + q->gq->horizon + q->gq->horizon;
+	}
 
 	if (unlikely(sch->q.qlen >= sch->limit))
 		return qdisc_drop(skb, sch, to_free);
 
 	qdisc_qstats_backlog_inc(sch, skb);
-	if (skb->trans_time) {
-		//printk(KERN_DEBUG "insertion time %ld\n", skb->trans_time);
-		tx_time = skb->trans_time;
-	} else {
+	if (!skb->trans_time) {
 		skb->trans_time = now;
-		tx_time = now;
 	}
 
-	gq_push (q->gq, skb, tx_time);
+	gq_push (q->gq, skb);
 
 	sch->q.qlen++;
 
@@ -358,34 +243,47 @@ static int gq_enqueue(struct sk_buff *skb, struct Qdisc *sch,
 static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 {
 	struct gq_sched_data *q = qdisc_priv(sch);
-	u64 tx_time, now = ktime_get_ns();
+	u64 now = ktime_get_ns();
 	struct sk_buff *skb;
+	u64 time_of_min_pkt;
 
 	skb = gq_extract(q->gq, now);
 	if(!skb) {
-		//printk(KERN_DEBUG "NO PACKETS IN GQ %ld %ld\n", q->gq->num_of_elements, sch->q.qlen);
-		u64 index_of_min_pkt = gq_get_min_index(q->gq);
-		u64 time_of_min_pkt = gq_index_to_ts(q->gq, index_of_min_pkt);
-		if (q->gq->buckets[index_of_min_pkt].head) {
-			tx_time = q->gq->buckets[index_of_min_pkt].head->trans_time;
-				/*if (q->visited_by_timer)
-					printk(KERN_DEBUG "SCHEDULED WAKE UP AT %ld %ld %ld %ld %ld %ld\n",
-							tx_time, q->watchdog.last_expires,
-							index_of_min_pkt, time_of_min_pkt,
-							q->gq->head_ts, now);*/
+		int index = get_min_index(q->gq);
+		u64 base_ts = 0;
 
-			if (q->watchdog.last_expires + q->gq->grnlrty > now)
-				qdisc_watchdog_schedule_ns(&q->watchdog, tx_time + q->gq->grnlrty);
-			else
-				qdisc_watchdog_schedule_ns(&q->watchdog, tx_time);
-
-			//printk(KERN_DEBUG "SCHEDULED WAKE UP AT %ld \n", tx_time);
-			q->time_next_delayed_wake_up = tx_time;
-			q->visited_by_timer = now;
+		if (!index) {
+			return NULL;
 		}
+
+		if (q->gq->meta1[0].c) {
+			base_ts = q->gq->main_ts;
+		} else {
+			base_ts = q->gq->buffer_ts;
+		}
+
+		time_of_min_pkt = (index * q->gq->grnlrty) + base_ts;
+		qdisc_watchdog_schedule_ns(&q->watchdog, time_of_min_pkt);
+
 		return NULL;
 	}
-	q->visited_by_timer = 0;
+
+	// ADJUST ROTATION
+	if (q->gq->buffer_ts < now && q->gq->meta1[0].c == 0) {
+		struct gq_bucket *tmp_buckets = q->gq->buffer_buckets;
+		struct curvature_desc *tmp_meta = q->gq->meta2;
+		u64 tmp_ts = q->gq->buffer_ts;
+
+		q->gq->buffer_buckets = q->gq->main_buckets;
+		q->gq->meta2 = q->gq->meta1;
+		q->gq->buffer_ts = q->gq->buffer_ts + q->gq->horizon;
+		q->gq->max_ts = q->gq->buffer_ts + q->gq->horizon;
+
+		q->gq->main_buckets = tmp_buckets;
+		q->gq->meta1 = tmp_meta;
+		q->gq->main_ts = tmp_ts;
+	}
+
 	sch->q.qlen--;
 
 	qdisc_qstats_backlog_dec(sch, skb);
@@ -396,14 +294,14 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 static void gq_reset(struct Qdisc *sch)
 {
 	struct gq_sched_data *q = qdisc_priv(sch);
-	struct sk_buff *skb;
 
 	sch->q.qlen = 0;
 	sch->qstats.backlog = 0;
 
-	while(q->gq->num_of_elements) {
-		skb = gq_extract(q->gq, gq_index_to_ts(q->gq, gq_get_min_index(q->gq)));
-	}
+	memset(q->gq->main_buckets, 0, sizeof(struct gq_bucket) * q->gq->num_of_buckets);
+	memset(q->gq->buffer_buckets, 0, sizeof(struct gq_bucket) * q->gq->num_of_buckets);
+	memset(q->gq->meta1, 0, sizeof(struct curvature_desc) * q->gq->s);
+	memset(q->gq->meta2, 0, sizeof(struct curvature_desc) * q->gq->s);
 }
 
 static int gq_change(struct Qdisc *sch, struct nlattr *opt)
@@ -418,7 +316,8 @@ static void gq_destroy(struct Qdisc *sch)
 
 	gq_reset(sch);
 
-	kvfree(gq_p->buckets);
+	kvfree(gq_p->main_buckets);
+	kvfree(gq_p->buffer_buckets);
 	kvfree(gq_p->meta1);
 	kvfree(gq_p->meta2);
 	kvfree(gq_p->meta_tmp);
@@ -427,13 +326,32 @@ static void gq_destroy(struct Qdisc *sch)
 	qdisc_watchdog_cancel(&q->watchdog);
 }
 
+// initializer
+
+unsigned int log_approx(uint32_t v) {
+	const unsigned int b[] = {0x2, 0xC, 0xF0, 0xFF00, 0xFFFF0000};
+	const unsigned int S[] = {1, 2, 4, 8, 16};
+	int i;
+
+	unsigned int r = 0; // result of log2(v) will go here
+	for (i = 4; i >= 0; i--) // unroll for speed...
+	{
+  		if (v & b[i])
+  		{
+    			v >>= S[i];
+    			r |= S[i];
+  		}
+	}
+	return r;
+}
+
 static int gq_init(struct Qdisc *sch, struct nlattr *opt)
 {
 	struct gq_sched_data *q = qdisc_priv(sch);
 	struct gradient_queue *gq_p;
 	int i = 0;
-	u64 granularity =  10000;
-	u64 horizon =   500000000;
+	u64 granularity =    100000;
+	u64 horizon =   10000000000;
 	u32 base = 32;
 	u64 now = ktime_get_ns();
 
@@ -441,6 +359,12 @@ static int gq_init(struct Qdisc *sch, struct nlattr *opt)
 			GFP_KERNEL | __GFP_REPEAT | __GFP_NOWARN,
 			netdev_queue_numa_node_read(sch->dev_queue));
 
+
+	gq_p->main_ts = now;
+	gq_p->buffer_ts = now + horizon;
+	gq_p->max_ts = now + horizon + horizon;
+
+	gq_p->horizon = horizon;
 	gq_p->head_ts = now / granularity;
 	gq_p->grnlrty = granularity;
 	gq_p->num_of_buckets = horizon / granularity;
@@ -453,9 +377,13 @@ static int gq_init(struct Qdisc *sch, struct nlattr *opt)
 		gq_p->s *= gq_p->w;
 	gq_p->s = (gq_p->s - 1) / (gq_p->w - 1);
 
-	gq_p->buckets = kmalloc_node(sizeof(struct gq_bucket) * gq_p->num_of_buckets,
+	gq_p->main_buckets = kmalloc_node(sizeof(struct gq_bucket) * gq_p->num_of_buckets,
 			GFP_KERNEL | __GFP_REPEAT | __GFP_NOWARN,
 			netdev_queue_numa_node_read(sch->dev_queue));
+
+	gq_p->buffer_buckets = kmalloc_node(sizeof(struct gq_bucket) * gq_p->num_of_buckets,
+		GFP_KERNEL | __GFP_REPEAT | __GFP_NOWARN,
+		netdev_queue_numa_node_read(sch->dev_queue));
 
 	gq_p->meta1 = kmalloc_node(sizeof(struct curvature_desc) * gq_p->s,
 			GFP_KERNEL | __GFP_REPEAT | __GFP_NOWARN,
@@ -464,7 +392,8 @@ static int gq_init(struct Qdisc *sch, struct nlattr *opt)
 			GFP_KERNEL | __GFP_REPEAT | __GFP_NOWARN,
 			netdev_queue_numa_node_read(sch->dev_queue));
 
-	memset(gq_p->buckets, 0, sizeof(struct gq_bucket) * gq_p->num_of_buckets);
+	memset(gq_p->main_buckets, 0, sizeof(struct gq_bucket) * gq_p->num_of_buckets);
+	memset(gq_p->buffer_buckets, 0, sizeof(struct gq_bucket) * gq_p->num_of_buckets);
 	memset(gq_p->meta1, 0, sizeof(struct curvature_desc) * gq_p->s);
 	memset(gq_p->meta2, 0, sizeof(struct curvature_desc) * gq_p->s);
 
@@ -487,7 +416,7 @@ static int gq_init(struct Qdisc *sch, struct nlattr *opt)
 	}
 	q->gq = gq_p;
 	q->visited_by_timer = 0;
-	sch->limit		= 1000000;
+	sch->limit		= 10000;
 	q->time_next_delayed_wake_up = now;
 	qdisc_watchdog_init(&q->watchdog, sch);
 
