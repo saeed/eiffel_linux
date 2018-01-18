@@ -221,10 +221,11 @@ static int gq_enqueue(struct sk_buff *skb, struct Qdisc *sch,
 	struct gq_sched_data *q = qdisc_priv(sch);
 	u64 now = ktime_get_ns();
 
-	if (!sch->q.qlen) {
+	if (!q->gq->num_of_elements) {
 		q->gq->main_ts = now;
 		q->gq->buffer_ts = now + q->gq->horizon;
 		q->gq->max_ts = now + q->gq->horizon + q->gq->horizon;
+		printk(KERN_DEBUG "MOVING FORWARD \n");
 	}
 
 	if (unlikely(sch->q.qlen >= sch->limit))
