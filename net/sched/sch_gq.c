@@ -172,6 +172,12 @@ static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 	printk("CALCULATED MIN INDEX %d \n", index);
 
 	if(index < 0) {
+		if (!gq->num_of_elements) {
+			gq->main_ts = now;
+			gq->buffer_ts = now + q->gq->horizon;
+			gq->max_ts = now + q->gq->horizon + q->gq->horizon;
+			printk(KERN_DEBUG "MOVING FORWARD \n");
+		}
 //		printk(KERN_DEBUG "WARNING! EMPTY QDISC! \n");
 		return NULL;
 	}
@@ -219,12 +225,7 @@ static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 		}
 	}
 
-	if (!q->gq->num_of_elements) {
-		q->gq->main_ts = now;
-		q->gq->buffer_ts = now + q->gq->horizon;
-		q->gq->max_ts = now + q->gq->horizon + q->gq->horizon;
-		printk(KERN_DEBUG "MOVING FORWARD \n");
-	}
+	
 	return ret_skb;
 }
 
