@@ -144,7 +144,7 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 
 int get_min_index (struct gradient_queue *gq) {
 	struct curvature_desc *meta;
-	u64 I = 0, i = 0;
+	int I = 0, i = 0;
 	if (gq->meta1[0].c) {
 		meta = gq->meta1;
 	} else if (gq->meta2[0].c) {
