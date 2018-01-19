@@ -172,7 +172,7 @@ static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 	printk("CALCULATED MIN INDEX %ld \n", index);
 
 	index = gq->horizon / gq->grnlrty - index - 1;
-	if(!index) {
+	if(index < 0) {
 		printk(KERN_DEBUG "WARNING! EMPTY QDISC! \n");
 		return NULL;
 	}
@@ -259,7 +259,7 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 		index = q->gq->horizon / q->gq->grnlrty - index - 1;
 		u64 base_ts = 0;
 
-		if (!index) {
+		if (index < 0) {
 			return NULL;
 		}
 
