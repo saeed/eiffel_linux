@@ -144,7 +144,7 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 
 int get_min_index (struct gradient_queue *gq) {
 	struct curvature_desc *meta;
-	int I = 0, i = 0;
+	u64 I = 0, i = 0;
 	if (gq->meta1[0].c) {
 		meta = gq->meta1;
 	} else if (gq->meta2[0].c) {
@@ -169,14 +169,14 @@ static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 	
 	index = get_min_index(gq);
 
-	printk("CALCULATED MIN INDEX %ld \n", index);
+	printk("CALCULATED MIN INDEX %d \n", index);
 
 	index = gq->horizon / gq->grnlrty - index - 1;
 	if(index < 0) {
 		printk(KERN_DEBUG "WARNING! EMPTY QDISC! \n");
 		return NULL;
 	}
-	printk("EXTRACTING FROM INDEX %ld \n", index);
+	printk("EXTRACTING FROM INDEX %d \n", index);
 	if (gq->meta1[0].c) {
 		meta = gq->meta1;
 		buckets = gq->main_buckets;
@@ -201,6 +201,8 @@ static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 		int done = 0, i;
 		uint64_t parentI = ((gq->s + index - 1) / gq->w);
 		uint64_t wI = (gq->s + index - 1) % gq->w;
+
+		printk(KERN_DEBUG "REMOVING LAST PACKET WITH TS %d \n", index);
 		for (i = 0; i < gq->l; i++) {
 			if (!done) {
 				meta[parentI].a -= gq->meta_tmp[wI].a;
