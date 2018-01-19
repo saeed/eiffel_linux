@@ -118,9 +118,9 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 		meta = gq->meta2;
 		buckets = gq->buffer_buckets;
 	}
-	index = gq->horizon - index + 1;
+	index = gq->horizon / gq->grnlrty - index - 1;
 	printk(KERN_DEBUG "index pushed %ld\n", index);
-	index = gq->horizon - index + 1;
+	//index = gq->horizon - index + 1;
 	if (!buckets[index].qlen) {
 		int done = 0, i;
 		uint64_t parentI = ((gq->s + index - 1) / gq->w);
@@ -168,7 +168,7 @@ static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 	struct sk_buff *ret_skb;
 	
 	index = get_min_index(gq);
-	//index = gq->horizon - index + 1;
+	index = gq->horizon / gq->grnlrty - index - 1;
 	if(!index) {
 		printk(KERN_DEBUG "WARNING! EMPTY QDISC! \n");
 		return NULL;
@@ -253,7 +253,7 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 	skb = gq_extract(q->gq, now);
 	if(!skb) {
 		int index = get_min_index(q->gq);
-		//index = q->gq->horizon - index + 1;
+		index = q->gq->horizon / q->gq->grnlrty - index - 1;
 		u64 base_ts = 0;
 
 		if (!index) {
