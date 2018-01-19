@@ -171,11 +171,13 @@ static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 
 	printk("CALCULATED MIN INDEX %d \n", index);
 
-	index = gq->horizon / gq->grnlrty - index - 1;
 	if(index < 0) {
 		printk(KERN_DEBUG "WARNING! EMPTY QDISC! \n");
 		return NULL;
 	}
+
+	index = gq->horizon / gq->grnlrty - index - 1;
+	
 	printk("EXTRACTING FROM INDEX %d \n", index);
 	if (gq->meta1[0].c) {
 		meta = gq->meta1;
