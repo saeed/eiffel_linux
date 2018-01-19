@@ -119,7 +119,7 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 		buckets = gq->buffer_buckets;
 	}
 	index = gq->horizon / gq->grnlrty - index - 1;
-	printk(KERN_DEBUG "index pushed %ld\n", index);
+	printk(KERN_DEBUG "index pushed %llu %llu\n", index, gq->num_of_elements);
 
 	if (!buckets[index].qlen) {
 		int done = 0, i;
@@ -178,13 +178,13 @@ static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 			gq->max_ts = now + gq->horizon + gq->horizon;
 			printk(KERN_DEBUG "MOVING FORWARD \n");
 		}
-//		printk(KERN_DEBUG "WARNING! EMPTY QDISC! \n");
+		printk(KERN_DEBUG "WARNING! EMPTY QDISC! %llu\n", gq->num_of_elements);
 		return NULL;
 	}
 
 	index = gq->horizon / gq->grnlrty - index - 1;
 	
-//	printk("EXTRACTING FROM INDEX %d \n", index);
+	printk("EXTRACTING FROM INDEX %d %llu\n", index, gq->num_of_elements);
 	if (gq->meta1[0].c) {
 		meta = gq->meta1;
 		buckets = gq->main_buckets;
@@ -198,7 +198,7 @@ static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 	skb_ts = (index * gq->grnlrty) + base_ts;
 
 	if (skb_ts > now) {
-//		printk(KERN_DEBUG "NOT TIME YET %ld %ld \n", skb_ts, now);
+		printk(KERN_DEBUG "NOT TIME YET %llu %llu \n", skb_ts, now);
 		return NULL;
 	}
 
@@ -210,7 +210,7 @@ static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 		uint64_t parentI = ((gq->s + index - 1) / gq->w);
 		uint64_t wI = (gq->s + index - 1) % gq->w;
 
-//		printk(KERN_DEBUG "REMOVING LAST PACKET WITH TS %d \n", index);
+		printk(KERN_DEBUG "REMOVING LAST PACKET WITH TS %d %llu \n", index, gq->num_of_elements);
 		for (i = 0; i < gq->l; i++) {
 			if (!done) {
 				meta[parentI].a -= gq->meta_tmp[wI].a;
