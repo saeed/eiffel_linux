@@ -190,7 +190,7 @@ static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 	skb_ts = (index * gq->grnlrty) + base_ts;
 
 	if (skb_ts > now) {
-		printf(KERN_DEBUG "NOT TIME YET %ld %ld \n", skb_ts, now);
+		printk(KERN_DEBUG "NOT TIME YET %ld %ld \n", skb_ts, now);
 		return NULL;
 	}
 
