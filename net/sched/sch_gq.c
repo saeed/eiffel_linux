@@ -118,6 +118,7 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 		meta = gq->meta2;
 		buckets = gq->buffer_buckets;
 	}
+	gq->num_of_elements++;
 	index = gq->horizon / gq->grnlrty - index - 1;
 	printk(KERN_DEBUG "index pushed %llu %llu\n", index, gq->num_of_elements);
 
@@ -138,7 +139,7 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 			parentI = meta[parentI].abcI;
 		}
 	}
-
+	
 	bucket_queue_add(&(buckets[index]), skb);
 }
 
@@ -269,8 +270,9 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 	skb = gq_extract(q->gq, now);
 	if(!skb) {
 		int index = get_min_index(q->gq);
-		index = q->gq->horizon / q->gq->grnlrty - index - 1;
 		u64 base_ts = 0;
+
+		index = q->gq->horizon / q->gq->grnlrty - index - 1;
 
 		if (index < 0) {
 			return NULL;
