@@ -120,7 +120,7 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 	}
 	index = gq->horizon / gq->grnlrty - index - 1;
 	printk(KERN_DEBUG "index pushed %ld\n", index);
-	//index = gq->horizon - index + 1;
+
 	if (!buckets[index].qlen) {
 		int done = 0, i;
 		uint64_t parentI = ((gq->s + index - 1) / gq->w);
@@ -187,9 +187,10 @@ static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 		base_ts = gq->buffer_ts;
 	}
 
-	skb_ts = ((gq->horizon - index) * gq->grnlrty) + base_ts;
+	skb_ts = (index * gq->grnlrty) + base_ts;
 
 	if (skb_ts > now) {
+		printf(KERN_DEBUG "NOT TIME YET %ld %ld \n", skb_ts, now);
 		return NULL;
 	}
 
@@ -269,7 +270,7 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 			base_ts = q->gq->buffer_ts;
 		}
 
-		time_of_min_pkt = ((q->gq->horizon - index) * q->gq->grnlrty) + base_ts;
+		time_of_min_pkt =  index * q->gq->grnlrty + base_ts;
 		qdisc_watchdog_schedule_ns(&q->watchdog, time_of_min_pkt);
 
 		return NULL;
