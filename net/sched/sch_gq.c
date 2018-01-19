@@ -174,8 +174,8 @@ static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 	if(index < 0) {
 		if (!gq->num_of_elements) {
 			gq->main_ts = now;
-			gq->buffer_ts = now + q->gq->horizon;
-			gq->max_ts = now + q->gq->horizon + q->gq->horizon;
+			gq->buffer_ts = now + gq->horizon;
+			gq->max_ts = now + gq->horizon + gq->horizon;
 			printk(KERN_DEBUG "MOVING FORWARD \n");
 		}
 //		printk(KERN_DEBUG "WARNING! EMPTY QDISC! \n");
