@@ -271,7 +271,7 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 	if(!skb) {
 		int index = get_min_index(q->gq);
 		u64 base_ts = 0;
-
+		printk(KERN_DEBUG "NO PACKET FOUND \n");
 		index = q->gq->horizon / q->gq->grnlrty - index - 1;
 
 		if (index < 0) {
@@ -283,6 +283,8 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 		} else {
 			base_ts = q->gq->buffer_ts;
 		}
+
+		printk(KERN_DEBUG "SETTING TIMER \n");
 
 		time_of_min_pkt =  index * q->gq->grnlrty + base_ts;
 		qdisc_watchdog_schedule_ns(&q->watchdog, time_of_min_pkt);
