@@ -454,9 +454,11 @@ begin:
 	if (!head->first) {
 		head = &q->old_flows;
 		if (!head->first) {
-			if (q->time_next_delayed_flow != ~0ULL)
+			if (q->time_next_delayed_flow != ~0ULL) {
+				printk(KERN_DEBUG "SETTING TIMER %llu \n", q->time_next_delayed_flow);
 				qdisc_watchdog_schedule_ns(&q->watchdog,
 							   q->time_next_delayed_flow);
+			}
 			return NULL;
 		}
 	}
