@@ -109,8 +109,8 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 		meta = gq->meta1;
 		buckets = gq->main_buckets;
 	} else {
-		if (skb->trans_time > gq->max_ts) {
-			index = (gq->max_ts - gq->buffer_ts) / gq->grnlrty;
+		if (skb->trans_time >= gq->max_ts) {
+			index = (gq->max_ts - gq->buffer_ts) / gq->grnlrty - 1;
 			skb->trans_time = gq->max_ts;
 		} else {
 			index = (skb->trans_time - gq->buffer_ts) / gq->grnlrty;
