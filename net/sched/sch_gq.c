@@ -242,6 +242,8 @@ static int gq_enqueue(struct sk_buff *skb, struct Qdisc *sch,
 //		printk(KERN_DEBUG "MOVING FORWARD \n");
 	}
 
+	printk(KERN_DEBUG "GOT PACKET %lu \n", sch->q.qlen);
+
 	if (unlikely(q->gq->num_of_elements >= sch->limit))
 		return qdisc_drop(skb, sch, to_free);
 
@@ -285,7 +287,7 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 
 		time_of_min_pkt =  index * q->gq->grnlrty + base_ts;
 
-		printk(KERN_DEBUG "SETTING TIMER %llu, %llu, %llu, %llu, %lu\n", time_of_min_pkt, now, base_ts, base_ts +  q->gq->horizon);
+		printk(KERN_DEBUG "SETTING TIMER %llu, %llu, %llu, %llu, %lu\n", time_of_min_pkt, now, base_ts, base_ts +  q->gq->horizon, sch->q.qlen);
 
 		qdisc_watchdog_schedule_ns(&q->watchdog, time_of_min_pkt);
 
@@ -313,7 +315,7 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 	qdisc_qstats_backlog_dec(sch, skb);
 	qdisc_bstats_update(sch, skb);
 
-	printk(KERN_DEBUG "SEND_PACKET \n");
+	printk(KERN_DEBUG "SEND_PACKET %lu \n", sch->q.qlen);
 	return skb;
 }
 
