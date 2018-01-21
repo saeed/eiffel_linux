@@ -274,7 +274,7 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 		printk(KERN_DEBUG "NO PACKET FOUND \n");
 		index = q->gq->horizon / q->gq->grnlrty - index - 1;
 
-		if (index < 0) {
+		if (!gq->num_of_elements) {
 			return NULL;
 		}
 
