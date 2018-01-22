@@ -90,6 +90,7 @@ static void bucket_queue_add(struct gq_bucket *bucket, struct sk_buff *skb)
 
 	bucket->tail->next = skb;
 	bucket->tail = skb;
+	printk(KERN_DEBUG "ENQ: STEP 4 \n");
 }
 
 // circular gradient queue
@@ -98,6 +99,8 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 	u64 index = 0;
 	struct curvature_desc *meta;
 	struct gq_bucket *buckets;
+
+	printk(KERN_DEBUG "ENQ: STEP 1 \n");
 
 	if (skb->trans_time < gq->buffer_ts) {
 		if (skb->trans_time <= gq->main_ts) {
@@ -123,6 +126,7 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 //	printk(KERN_DEBUG "index pushed %llu %llu\n", index, gq->num_of_elements);
 
 	if (!buckets[index].qlen) {
+		printk(KERN_DEBUG "ENQ: STEP 2 \n");
 		int done = 0, i;
 		uint64_t parentI = ((gq->s + index - 1) / gq->w);
 		uint64_t wI = (gq->s + index - 1) % gq->w;
@@ -137,6 +141,7 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 
 			wI = meta[parentI].wwI;
 			parentI = meta[parentI].abcI;
+			printk(KERN_DEBUG "ENQ: STEP 3 \n");
 		}
 	}
 	
@@ -146,6 +151,7 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 u64 get_min_index (struct gradient_queue *gq) {
 	struct curvature_desc *meta;
 	u64 I = 0, i = 0;
+	printk(KERN_DEBUG "DEQ: STEP 1 \n");
 	if (gq->meta1[0].c) {
 		meta = gq->meta1;
 	} else if (gq->meta2[0].c) {
@@ -156,6 +162,7 @@ u64 get_min_index (struct gradient_queue *gq) {
 
 	I = ((meta[0].b+meta[0].a-1)/(meta[0].a)) + 1;
 	for (i = 1; i < gq->l; i++) {
+		printk(KERN_DEBUG "DEQ: STEP 2 \n");
 		I = gq->w * I + ((meta[I].b+meta[I].a-1)/meta[I].a) + 1;
 	}
 	return I - gq->s;
@@ -199,7 +206,7 @@ static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 //		printk(KERN_DEBUG "NOT TIME YET %llu %llu \n", skb_ts, now);
 		return NULL;
 	}
-
+	printk(KERN_DEBUG "DEQ: STEP 3 \n");
 	gq->num_of_elements--;
 	index = gq->horizon / gq->grnlrty - index - 1;
 	ret_skb = gq_bucket_dequeue_head(&(buckets[index]));
@@ -220,6 +227,7 @@ static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 
 			wI = meta[parentI].wwI;
 			parentI = meta[parentI].abcI;
+			printk(KERN_DEBUG "DEQ: STEP 4 \n");
 		}
 	}
 
@@ -265,6 +273,7 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 	u64 now = ktime_get_ns();
 	struct sk_buff *skb;
 	u64 time_of_min_pkt;
+	printk(KERN_DEBUG "SEND_PACKET %lu \n", sch->q.qlen);
 
 	skb = gq_extract(q->gq, now);
 	if(!skb) {
@@ -315,7 +324,7 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 	qdisc_qstats_backlog_dec(sch, skb);
 	qdisc_bstats_update(sch, skb);
 
-	printk(KERN_DEBUG "SEND_PACKET %lu \n", sch->q.qlen);
+	
 	return skb;
 }
 
