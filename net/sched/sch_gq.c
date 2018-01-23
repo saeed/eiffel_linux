@@ -164,7 +164,7 @@ unsigned long get_min_index (struct gradient_queue *gq) {
 		I = gq->w * I + __ffs(meta[I].a);
 		printk(KERN_DEBUG "I DID?!- %lu \n", I);
 	}
-	return I - gq->s;
+	return I;// - gq->s;
 }
 
 static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
