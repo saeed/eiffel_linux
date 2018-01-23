@@ -121,7 +121,7 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 	}
 	gq->num_of_elements++;
 //	index = gq->horizon / gq->grnlrty - index - 1;
-
+	printk(KERN_DEBUG "insert at index %lu\n", index);
 	if (!buckets[index].qlen) {
 		int i;
 		uint64_t parentI = ((gq->s + index - 1) / gq->w);
@@ -138,7 +138,7 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 	bucket_queue_add(&(buckets[index]), skb);
 }
 
-u64 get_min_index (struct gradient_queue *gq) {
+unsigned long get_min_index (struct gradient_queue *gq) {
 	struct curvature_desc *meta;
 	unsigned long I = 0, i = 0;
 	if (gq->meta1[0].c) {
@@ -159,7 +159,7 @@ u64 get_min_index (struct gradient_queue *gq) {
 static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 	struct gq_bucket *buckets;
 	struct curvature_desc *meta;
-	u64 index = 0;
+	unsigned long index = 0;
 	u64 base_ts = 0, skb_ts = 0;
 	struct sk_buff *ret_skb;
 	
@@ -193,9 +193,10 @@ static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 //	index = gq->horizon / gq->grnlrty - index - 1;
 
 	if (index > gq->horizon / gq->grnlrty) {
-		printk(KERN_DEBUG "INDEX INVALUD %lu", index);
+		printk(KERN_DEBUG "INDEX INVALUD %lu\n", index);
 		return NULL;
 	}
+	printk(KERN_DEBUG "extract from index %lu \n", index);
 	ret_skb = gq_bucket_dequeue_head(&(buckets[index]));
 	if (!buckets[index].qlen) {
 		//int done = 0, i;
@@ -264,7 +265,7 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 
 	skb = gq_extract(q->gq, now);
 	if(!skb) {
-		u64 index = get_min_index(q->gq);
+		unsigned long index = get_min_index(q->gq);
 		u64 base_ts = 0;
 		
 		if (!(q->gq->num_of_elements)) {
