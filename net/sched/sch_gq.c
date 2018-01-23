@@ -127,6 +127,7 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 		int i, done = 0;
 		unsigned long parentI = ((gq->s + index - 1) / gq->w);
 		unsigned long wI = (gq->s + index - 1) % gq->w;
+		printk(KERN_DEBUG "parent %lu, wI %lu\n", parentI, wI);
 		for (i = 0; i < gq->l; i++) {
 			if (!done)
 				meta[parentI].a |= 1UL << wI;//+= gq->meta_tmp[wI].a;
@@ -137,6 +138,7 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 
 			wI = meta[parentI].wwI;
 			parentI = meta[parentI].abcI;
+			printk(KERN_DEBUG "parent %lu, wI %lu\n", parentI, wI);
 		}
 	}
 	
