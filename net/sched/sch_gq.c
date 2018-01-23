@@ -122,12 +122,12 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 	gq->num_of_elements++;
 
 //	index = gq->horizon / gq->grnlrty - index - 1;
-	printk(KERN_DEBUG "insert at index %lu\n", index);
+//	printk(KERN_DEBUG "insert at index %lu\n", index);
 	if (!buckets[index].qlen) {
 		int i, done = 0;
 		unsigned long parentI = ((gq->s + index - 1) / gq->w);
 		unsigned long wI = (gq->s + index - 1) % gq->w;
-		printk(KERN_DEBUG "parent %lu, wI %lu\n", parentI, wI);
+//		printk(KERN_DEBUG "parent %lu, wI %lu\n", parentI, wI);
 		for (i = 0; i < gq->l; i++) {
 			if (!done)
 				meta[parentI].a |= 1UL << wI;//+= gq->meta_tmp[wI].a;
@@ -138,7 +138,7 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 
 			wI = meta[parentI].wwI;
 			parentI = meta[parentI].abcI;
-			printk(KERN_DEBUG "parent %lu, wI %lu\n", parentI, wI);
+//			printk(KERN_DEBUG "parent %lu, wI %lu\n", parentI, wI);
 		}
 	}
 	
@@ -153,7 +153,7 @@ unsigned long get_min_index (struct gradient_queue *gq) {
 	} else if (gq->meta2[0].c) {
 		meta = gq->meta2;
 	} else {
-		printk(KERN_DEBUG "CAN'T FIND IT !!\n");
+//		printk(KERN_DEBUG "CAN'T FIND IT !!\n");
 		return -1;
 	}
 
@@ -161,10 +161,10 @@ unsigned long get_min_index (struct gradient_queue *gq) {
 		return 0;
 
 	I = __ffs(meta[0].a);
-	printk(KERN_DEBUG "I DID?! %lu \n", I);
+//	printk(KERN_DEBUG "I DID?! %lu \n", I);
 	for (i = 1; i < gq->l; i++) {
 		I = gq->w * I + __ffs(meta[I].a);
-		printk(KERN_DEBUG "I DID?!- %lu \n", I);
+//		printk(KERN_DEBUG "I DID?!- %lu \n", I);
 	}
 	return I;// - gq->s;
 }
@@ -209,7 +209,7 @@ static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 		printk(KERN_DEBUG "INDEX INVALUD %lu\n", index);
 		return NULL;
 	}
-	printk(KERN_DEBUG "extract from index %lu \n", index);
+//	printk(KERN_DEBUG "extract from index %lu \n", index);
 	ret_skb = gq_bucket_dequeue_head(&(buckets[index]));
 	if (!buckets[index].qlen) {
 		int done = 0, i;
@@ -248,7 +248,7 @@ static int gq_enqueue(struct sk_buff *skb, struct Qdisc *sch,
 	}
 
 	if (unlikely(q->gq->num_of_elements >= sch->limit)) {
-		printk(KERN_DEBUG "INTENTIONALLY DROPPING PACKETS %llu \n", q->gq->num_of_elements );
+//		printk(KERN_DEBUG "INTENTIONALLY DROPPING PACKETS %llu \n", q->gq->num_of_elements );
 		return qdisc_drop(skb, sch, to_free);
 	}
 
