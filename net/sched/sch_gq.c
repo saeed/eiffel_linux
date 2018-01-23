@@ -163,10 +163,10 @@ unsigned long get_min_index (struct gradient_queue *gq) {
 	if (!meta[0].a)
 		return 0;
 	printk(KERN_DEBUG "I DID?! %lu %lu\n", meta[0].a, __ffs(meta[0].a));
-	I = __ffs(meta[0].a);
+	I = __ffs(meta[0].a) + 1;
 	printk(KERN_DEBUG "I DID?! %lu %lu %lu\n", I, meta[I].a, __ffs(meta[I].a));
 	for (i = 1; i < gq->l; i++) {
-		I = gq->w * I + __ffs(meta[I].a);
+		I = gq->w * I + __ffs(meta[I].a) + 1;
 		printk(KERN_DEBUG "I DID?!- %lu \n", I);
 	}
 	return I;// - gq->s;
