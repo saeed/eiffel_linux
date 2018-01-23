@@ -120,16 +120,16 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 		buckets = gq->buffer_buckets;
 	}
 	gq->num_of_elements++;
-	index++;
-//	index = gq->horizon / gq->grnlrty - index - 1;
+
+	index = gq->horizon / gq->grnlrty - index - 1;
 	printk(KERN_DEBUG "insert at index %lu\n", index);
 	if (!buckets[index].qlen) {
 		int i, done = 0;
-		uint64_t parentI = ((gq->s + index - 1) / gq->w);
-		uint64_t wI = (gq->s + index - 1) % gq->w;
+		unsigned long parentI = ((gq->s + index - 1) / gq->w);
+		unsigned long wI = (gq->s + index - 1) % gq->w;
 		for (i = 0; i < gq->l; i++) {
 			if (!done)
-				meta[parentI].a |= 1ULL << wI;//+= gq->meta_tmp[wI].a;
+				meta[parentI].a |= 1UL << wI;//+= gq->meta_tmp[wI].a;
 			meta[parentI].c++;
 
 			if(meta[parentI].c > 1)
@@ -180,7 +180,7 @@ static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 		return NULL;
 	}
 
-//	index = gq->horizon / gq->grnlrty - index - 1;
+	index = gq->horizon / gq->grnlrty - index - 1;
 	
 	if (gq->meta1[0].c) {
 		meta = gq->meta1;
@@ -198,7 +198,7 @@ static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 		return NULL;
 	}
 	gq->num_of_elements--;
-//	index = gq->horizon / gq->grnlrty - index - 1;
+	index = gq->horizon / gq->grnlrty - index - 1;
 
 	if (index > gq->horizon / gq->grnlrty) {
 		printk(KERN_DEBUG "INDEX INVALUD %lu\n", index);
@@ -208,12 +208,12 @@ static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 	ret_skb = gq_bucket_dequeue_head(&(buckets[index]));
 	if (!buckets[index].qlen) {
 		int done = 0, i;
-		uint64_t parentI = ((gq->s + index - 1) / gq->w);
-		uint64_t wI = (gq->s + index - 1) % gq->w;
+		unsigned long parentI = ((gq->s + index - 1) / gq->w);
+		unsigned long wI = (gq->s + index - 1) % gq->w;
 
 		for (i = 0; i < gq->l; i++) {
 			if (!done)
-				meta[parentI].a &= ~(1ULL << wI);//-= gq->meta_tmp[wI].a;
+				meta[parentI].a &= ~(1UL << wI);//-= gq->meta_tmp[wI].a;
 			meta[parentI].c--;
 
 			if(meta[parentI].c)
@@ -283,7 +283,7 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 			return NULL;
 		}
 
-//		index = q->gq->horizon / q->gq->grnlrty - index - 1;
+		index = q->gq->horizon / q->gq->grnlrty - index - 1;
 
 		if (q->gq->meta1[0].c) {
 			base_ts = q->gq->main_ts;
