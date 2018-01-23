@@ -122,7 +122,7 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 	gq->num_of_elements++;
 
 //	index = gq->horizon / gq->grnlrty - index - 1;
-//	printk(KERN_DEBUG "insert at index %lu\n", index);
+	printk(KERN_DEBUG "insert at index %lu\n", index);
 	if (!buckets[index].qlen) {
 		int i, done = 0;
 		unsigned long parentI = ((gq->s + index - 1) / gq->w);
@@ -209,7 +209,7 @@ static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 		printk(KERN_DEBUG "INDEX INVALUD %lu\n", index);
 		return NULL;
 	}
-//	printk(KERN_DEBUG "extract from index %lu \n", index);
+	printk(KERN_DEBUG "extract from index %lu \n", index);
 	ret_skb = gq_bucket_dequeue_head(&(buckets[index]));
 	if (!buckets[index].qlen) {
 		int done = 0, i;
