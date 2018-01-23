@@ -121,18 +121,13 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 	}
 	gq->num_of_elements++;
 
-//	index = gq->horizon / gq->grnlrty - index - 1;
-	printk(KERN_DEBUG "insert at index %lu\n", index);
 	if (!buckets[index].qlen) {
 		int i, done = 0;
 		unsigned long parentI = ((gq->s + index - 1) / gq->w);
 		unsigned long wI = (gq->s + index - 1) % gq->w;
-		printk(KERN_DEBUG "parent %lu, wI %lu\n", parentI, wI);
 		for (i = 0; i < gq->l; i++) {
 			if (!done) {
-				printk(KERN_DEBUG "a %lu before %lu \n", meta[parentI].a, (1UL << wI));
 				meta[parentI].a |= (1UL << wI);//+= gq->meta_tmp[wI].a;
-				printk(KERN_DEBUG "a %lu after %lu \n", meta[parentI].a, (1UL << wI));
 			}
 			meta[parentI].c++;
 
@@ -141,7 +136,6 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 
 			wI = meta[parentI].wwI;
 			parentI = meta[parentI].abcI;
-			printk(KERN_DEBUG "parent %lu, wI %lu\n", parentI, wI);
 		}
 	}
 	
@@ -156,18 +150,16 @@ unsigned long get_min_index (struct gradient_queue *gq) {
 	} else if (gq->meta2[0].c) {
 		meta = gq->meta2;
 	} else {
-//		printk(KERN_DEBUG "CAN'T FIND IT !!\n");
 		return -1;
 	}
 
 	if (!meta[0].a)
 		return 0;
-	printk(KERN_DEBUG "I DID?! %lu %lu\n", meta[0].a, __ffs(meta[0].a));
+
 	I = __ffs(meta[0].a) + 1;
-	printk(KERN_DEBUG "I DID?! %lu %lu %lu\n", I, meta[I].a, __ffs(meta[I].a));
+
 	for (i = 1; i < gq->l; i++) {
 		I = gq->w * I + __ffs(meta[I].a) + 1;
-		printk(KERN_DEBUG "I DID?!- %lu \n", I);
 	}
 	return I - gq->s;
 }
@@ -206,19 +198,16 @@ static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 		return NULL;
 	}
 	gq->num_of_elements--;
-//	index = gq->horizon / gq->grnlrty - index - 1;
 
 	if (index > gq->horizon / gq->grnlrty) {
-		printk(KERN_DEBUG "INDEX INVALUD %lu\n", index);
 		return NULL;
 	}
-	printk(KERN_DEBUG "extract from index %lu \n", index);
 	ret_skb = gq_bucket_dequeue_head(&(buckets[index]));
 	if (!buckets[index].qlen) {
 		int done = 0, i;
 		unsigned long parentI = ((gq->s + index - 1) / gq->w);
 		unsigned long wI = (gq->s + index - 1) % gq->w;
-		printk(KERN_DEBUG "parent %lu, wI %lu\n", parentI, wI);
+
 		for (i = 0; i < gq->l; i++) {
 			if (!done)
 				meta[parentI].a &= ~(1UL << wI);//-= gq->meta_tmp[wI].a;
@@ -229,7 +218,6 @@ static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 
 			wI = meta[parentI].wwI;
 			parentI = meta[parentI].abcI;
-			printk(KERN_DEBUG "parent %lu, wI %lu\n", parentI, wI);
 		}
 	}
 
@@ -252,7 +240,6 @@ static int gq_enqueue(struct sk_buff *skb, struct Qdisc *sch,
 	}
 
 	if (unlikely(q->gq->num_of_elements >= sch->limit)) {
-//		printk(KERN_DEBUG "INTENTIONALLY DROPPING PACKETS %llu \n", q->gq->num_of_elements );
 		return qdisc_drop(skb, sch, to_free);
 	}
 
