@@ -120,7 +120,7 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 		buckets = gq->buffer_buckets;
 	}
 	gq->num_of_elements++;
-	index++;
+
 //	index = gq->horizon / gq->grnlrty - index - 1;
 	printk(KERN_DEBUG "insert at index %lu\n", index);
 	if (!buckets[index].qlen) {
@@ -166,7 +166,7 @@ unsigned long get_min_index (struct gradient_queue *gq) {
 		I = gq->w * I + __ffs(meta[I].a);
 		printk(KERN_DEBUG "I DID?!- %lu \n", I);
 	}
-	return I - gq->s;
+	return I;// - gq->s;
 }
 
 static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
