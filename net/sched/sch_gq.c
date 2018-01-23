@@ -149,12 +149,15 @@ unsigned long get_min_index (struct gradient_queue *gq) {
 	} else if (gq->meta2[0].c) {
 		meta = gq->meta2;
 	} else {
+		printk(KERN_DEBUG "CAN'T FIND IT !!\n");
 		return -1;
 	}
 
 	I = __ffs(meta[0].a);
+	printk(KERN_DEBUG "I DID?! %lu \n", I);
 	for (i = 1; i < gq->l; i++) {
 		I = gq->w * I + __ffs(meta[I].a);
+		printk(KERN_DEBUG "I DID?!- %lu \n", I);
 	}
 	return I - gq->s;
 }
@@ -175,7 +178,7 @@ static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 		return NULL;
 	}
 
-	index = gq->horizon / gq->grnlrty - index - 1;
+//	index = gq->horizon / gq->grnlrty - index - 1;
 	
 	if (gq->meta1[0].c) {
 		meta = gq->meta1;
@@ -193,7 +196,7 @@ static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 		return NULL;
 	}
 	gq->num_of_elements--;
-	index = gq->horizon / gq->grnlrty - index - 1;
+//	index = gq->horizon / gq->grnlrty - index - 1;
 
 	if (index > gq->horizon / gq->grnlrty) {
 		printk(KERN_DEBUG "INDEX INVALUD %lu\n", index);
@@ -278,7 +281,7 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 			return NULL;
 		}
 
-		index = q->gq->horizon / q->gq->grnlrty - index - 1;
+//		index = q->gq->horizon / q->gq->grnlrty - index - 1;
 
 		if (q->gq->meta1[0].c) {
 			base_ts = q->gq->main_ts;
