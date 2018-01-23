@@ -120,7 +120,7 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 		buckets = gq->buffer_buckets;
 	}
 	gq->num_of_elements++;
-//	index = gq->horizon / gq->grnlrty - index - 1;
+	index = gq->horizon / gq->grnlrty - index - 1;
 	printk(KERN_DEBUG "insert at index %lu\n", index);
 	if (!buckets[index].qlen) {
 		int i;
@@ -175,7 +175,7 @@ static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 		return NULL;
 	}
 
-//	index = gq->horizon / gq->grnlrty - index - 1;
+	index = gq->horizon / gq->grnlrty - index - 1;
 	
 	if (gq->meta1[0].c) {
 		meta = gq->meta1;
@@ -193,7 +193,7 @@ static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 		return NULL;
 	}
 	gq->num_of_elements--;
-//	index = gq->horizon / gq->grnlrty - index - 1;
+	index = gq->horizon / gq->grnlrty - index - 1;
 
 	if (index > gq->horizon / gq->grnlrty) {
 		printk(KERN_DEBUG "INDEX INVALUD %lu\n", index);
@@ -278,7 +278,7 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 			return NULL;
 		}
 
-//		index = q->gq->horizon / q->gq->grnlrty - index - 1;
+		index = q->gq->horizon / q->gq->grnlrty - index - 1;
 
 		if (q->gq->meta1[0].c) {
 			base_ts = q->gq->main_ts;
