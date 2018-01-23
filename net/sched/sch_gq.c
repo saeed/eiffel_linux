@@ -130,6 +130,9 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 			meta[parentI].a |= 1ULL << wI;//+= gq->meta_tmp[wI].a;
 			meta[parentI].c++;
 
+			if(meta[parentI].c > 1)
+				break;
+
 			wI = meta[parentI].wwI;
 			parentI = meta[parentI].abcI;
 		}
@@ -207,6 +210,9 @@ static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 		for (i = 0; i < gq->l; i++) {
 			meta[parentI].a &= ~(1ULL << wI);//-= gq->meta_tmp[wI].a;
 			meta[parentI].c--;
+
+			if(meta[parentI].c)
+				break;
 
 			wI = meta[parentI].wwI;
 			parentI = meta[parentI].abcI;
