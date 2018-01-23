@@ -191,6 +191,11 @@ static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 	}
 	gq->num_of_elements--;
 //	index = gq->horizon / gq->grnlrty - index - 1;
+
+	if (index > gq->horizon / gq->grnlrty) {
+		printk(KERN_DEBUG "INDEX INVALUD %lu", index);
+		return NULL;
+	}
 	ret_skb = gq_bucket_dequeue_head(&(buckets[index]));
 	if (!buckets[index].qlen) {
 		//int done = 0, i;
