@@ -46,7 +46,7 @@ struct gradient_queue {
 	u64                    num_of_elements;
 	u64                    num_of_buckets;
 	u64                    side;
-	u64                    h, w, l, s;
+	unsigned long                    h, w, l, s;
 	u64                    main_ts, buffer_ts, max_ts, horizon;
 	struct gq_bucket       *main_buckets;
 	struct gq_bucket       *buffer_buckets;
@@ -96,7 +96,7 @@ static void bucket_queue_add(struct gq_bucket *bucket, struct sk_buff *skb)
 // circular gradient queue
 
 void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
-	u64 index = 0;
+	unsigned long index = 0;
 	struct curvature_desc *meta;
 	struct gq_bucket *buckets;
 
@@ -120,6 +120,7 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 		buckets = gq->buffer_buckets;
 	}
 	gq->num_of_elements++;
+	index++;
 //	index = gq->horizon / gq->grnlrty - index - 1;
 	printk(KERN_DEBUG "insert at index %lu\n", index);
 	if (!buckets[index].qlen) {
