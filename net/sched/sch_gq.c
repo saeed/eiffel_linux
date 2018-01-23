@@ -127,7 +127,7 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 		int i, done = 0;
 		unsigned long parentI = ((gq->s + index - 1) / gq->w);
 		unsigned long wI = (gq->s + index - 1) % gq->w;
-//		printk(KERN_DEBUG "parent %lu, wI %lu\n", parentI, wI);
+		printk(KERN_DEBUG "parent %lu, wI %lu\n", parentI, wI);
 		for (i = 0; i < gq->l; i++) {
 			if (!done)
 				meta[parentI].a |= 1UL << wI;//+= gq->meta_tmp[wI].a;
@@ -138,7 +138,7 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 
 			wI = meta[parentI].wwI;
 			parentI = meta[parentI].abcI;
-//			printk(KERN_DEBUG "parent %lu, wI %lu\n", parentI, wI);
+			printk(KERN_DEBUG "parent %lu, wI %lu\n", parentI, wI);
 		}
 	}
 	
@@ -161,10 +161,10 @@ unsigned long get_min_index (struct gradient_queue *gq) {
 		return 0;
 
 	I = __ffs(meta[0].a);
-//	printk(KERN_DEBUG "I DID?! %lu \n", I);
+	printk(KERN_DEBUG "I DID?! %lu \n", I);
 	for (i = 1; i < gq->l; i++) {
 		I = gq->w * I + __ffs(meta[I].a);
-//		printk(KERN_DEBUG "I DID?!- %lu \n", I);
+		printk(KERN_DEBUG "I DID?!- %lu \n", I);
 	}
 	return I;// - gq->s;
 }
@@ -215,17 +215,18 @@ static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 		int done = 0, i;
 		unsigned long parentI = ((gq->s + index - 1) / gq->w);
 		unsigned long wI = (gq->s + index - 1) % gq->w;
-
+		printk(KERN_DEBUG "parent %lu, wI %lu\n", parentI, wI);
 		for (i = 0; i < gq->l; i++) {
 			if (!done)
 				meta[parentI].a &= ~(1UL << wI);//-= gq->meta_tmp[wI].a;
 			meta[parentI].c--;
 
-			if(meta[parentI].c)
+			if(meta[parentI].c > 0)
 				done = 1;
 
 			wI = meta[parentI].wwI;
 			parentI = meta[parentI].abcI;
+			printk(KERN_DEBUG "parent %lu, wI %lu\n", parentI, wI);
 		}
 	}
 
