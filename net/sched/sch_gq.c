@@ -120,7 +120,7 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 		buckets = gq->buffer_buckets;
 	}
 	gq->num_of_elements++;
-
+	index++;
 //	index = gq->horizon / gq->grnlrty - index - 1;
 	printk(KERN_DEBUG "insert at index %lu\n", index);
 	if (!buckets[index].qlen) {
