@@ -120,19 +120,20 @@ void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 		buckets = gq->buffer_buckets;
 	}
 	gq->num_of_elements++;
-	index++;
+
 //	index = gq->horizon / gq->grnlrty - index - 1;
 	printk(KERN_DEBUG "insert at index %lu\n", index);
 	if (!buckets[index].qlen) {
-		int i;
+		int i, done = 0;
 		uint64_t parentI = ((gq->s + index - 1) / gq->w);
 		uint64_t wI = (gq->s + index - 1) % gq->w;
 		for (i = 0; i < gq->l; i++) {
-			meta[parentI].a |= 1ULL << wI;//+= gq->meta_tmp[wI].a;
+			if (!done)
+				meta[parentI].a |= 1ULL << wI;//+= gq->meta_tmp[wI].a;
 			meta[parentI].c++;
 
 			if(meta[parentI].c > 1)
-				break;
+				done = 1;
 
 			wI = meta[parentI].wwI;
 			parentI = meta[parentI].abcI;
@@ -206,17 +207,17 @@ static struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 	printk(KERN_DEBUG "extract from index %lu \n", index);
 	ret_skb = gq_bucket_dequeue_head(&(buckets[index]));
 	if (!buckets[index].qlen) {
-		//int done = 0, i;
-		int i;
+		int done = 0, i;
 		uint64_t parentI = ((gq->s + index - 1) / gq->w);
 		uint64_t wI = (gq->s + index - 1) % gq->w;
 
 		for (i = 0; i < gq->l; i++) {
-			meta[parentI].a &= ~(1ULL << wI);//-= gq->meta_tmp[wI].a;
+			if (!done)
+				meta[parentI].a &= ~(1ULL << wI);//-= gq->meta_tmp[wI].a;
 			meta[parentI].c--;
 
 			if(meta[parentI].c)
-				break;
+				done = 1;
 
 			wI = meta[parentI].wwI;
 			parentI = meta[parentI].abcI;
