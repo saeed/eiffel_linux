@@ -378,8 +378,8 @@ static int gq_init(struct Qdisc *sch, struct nlattr *opt)
 	struct gq_sched_data *q = qdisc_priv(sch);
 	struct gradient_queue *gq_p;
 	int i = 0;
-	u64 granularity =      100000;
-	u64 horizon =     10000000000;
+	u64 granularity =       1000;
+	u64 horizon =     1000000000;
 	u32 base = 32;
 	u64 now = ktime_get_ns();
 
@@ -409,9 +409,15 @@ static int gq_init(struct Qdisc *sch, struct nlattr *opt)
 			GFP_KERNEL | __GFP_REPEAT | __GFP_NOWARN,
 			netdev_queue_numa_node_read(sch->dev_queue));
 
+	if(!gq_p->main_buckets)
+		gq_p->main_buckets = vmalloc_node(sizeof(struct gq_bucket) * gq_p->num_of_buckets, netdev_queue_numa_node_read(sch->dev_queue));
+
 	gq_p->buffer_buckets = kmalloc_node(sizeof(struct gq_bucket) * gq_p->num_of_buckets,
 		GFP_KERNEL | __GFP_REPEAT | __GFP_NOWARN,
 		netdev_queue_numa_node_read(sch->dev_queue));
+
+	if(!gq_p->buffer_buckets)
+		gq_p->buffer_buckets = vmalloc_node(sizeof(struct gq_bucket) * gq_p->num_of_buckets, netdev_queue_numa_node_read(sch->dev_queue));
 
 	gq_p->meta1 = kmalloc_node(sizeof(struct curvature_desc) * gq_p->s,
 			GFP_KERNEL | __GFP_REPEAT | __GFP_NOWARN,
