@@ -322,7 +322,7 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 				do_div(len, rate);
 			if (unlikely(len > NSEC_PER_SEC))
 				len = NSEC_PER_SEC;
-			len -= min(len/2, now - skb->sk->sk_time_of_last_sent_pkt);
+			//len -= min(len/2, now - skb->sk->sk_time_of_last_sent_pkt);
 			skb->sk->sk_time_of_last_sent_pkt = now + len;
 		}
 	}
