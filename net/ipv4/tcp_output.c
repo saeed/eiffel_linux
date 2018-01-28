@@ -1024,20 +1024,27 @@ static int tcp_transmit_skb(struct sock *sk, struct sk_buff *skb, int clone_it,
 
 	// rate stuff
 	if (sk->sk_pacing_rate) {
-		rate = sk->sk_max_pacing_rate;
-		rate = min(sk->sk_pacing_rate, rate);
+		rate = sk->sk_pacing_rate;
 
 		if (rate != ~0U) {
 			u64 len = ((u64)skb->len) * NSEC_PER_SEC;
 			if (likely(rate))
 				do_div(len, rate);
 
-			skb->trans_time = tp->lst_tx_time + len;
-			if (skb->trans_time < now)
-				skb->trans_time = now;
+			if (unlikely(len > NSEC_PER_SEC)) {
+				len = NSEC_PER_SEC;
+			}
+
+			tp->lst_tx_time = tp->lst_tx_time + len;
+
+			if (tp->lst_tx_time < now)
+				tp->lst_tx_time = now;
+
 		}
-		tp->lst_tx_time = skb->trans_time;
-	}
+		skb->trans_time = tp->lst_tx_time;
+	}	
+
+
 
 	icsk->icsk_af_ops->send_check(sk, skb);
 

@@ -397,6 +397,8 @@ struct sock {
 	__u32			sk_priority;
 	__u32			sk_mark;
 	u32			sk_pacing_rate; /* bytes per second */
+	u64                     sk_time_of_last_sent_pkt;
+	u64                     sk_time_next_pkt;
 	u32			sk_max_pacing_rate;
 	struct page_frag	sk_frag;
 	netdev_features_t	sk_route_caps;
