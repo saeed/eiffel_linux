@@ -101,7 +101,7 @@ inline void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 	if (skb->trans_time > gq->max_ts)
 		skb->trans_time = gq->max_ts;
 
-	index = time_to_index(skb->trans_time);
+	index = time_to_index(gq, skb->trans_time);
 
 	gq->num_of_elements++;
 
@@ -109,7 +109,7 @@ inline void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 }
 
 inline unsigned long get_min_index2 (struct gradient_queue *gq) {
-	unsigned long index = time_to_index(gq->head_ts);
+	unsigned long index = time_to_index(gq, gq->head_ts);
 	gq->main_ts = gq->head_ts;
 	while (!gq->main_buckets[index].qlen) {
 		index++;
@@ -119,7 +119,7 @@ inline unsigned long get_min_index2 (struct gradient_queue *gq) {
 }
 
 inline unsigned long get_min_index (struct gradient_queue *gq, uint64_t now) {
-	unsigned long index = time_to_index(gq->head_ts);
+	unsigned long index = time_to_index(gq, gq->head_ts);
 	while (!gq->main_buckets[index].qlen && gq->head_ts <= now) {
 		index++;
 		gq->head_ts += gq->grnlrty;
