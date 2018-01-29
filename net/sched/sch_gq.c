@@ -160,7 +160,7 @@ static int gq_enqueue(struct sk_buff *skb, struct Qdisc *sch,
 	u64 now = ktime_get_ns();
 
 	if (!q->gq->num_of_elements) {
-		gq->head_ts = now;
+		q->gq->head_ts = now;
 		q->gq->main_ts = now;
 		q->gq->max_ts = now + q->gq->horizon;
 	}
@@ -200,7 +200,7 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 			return NULL;
 		}
 		get_min_index2(q->gq);
-		time_of_min_pkt = gq->main_ts;
+		time_of_min_pkt = q->gq->main_ts;
 
 		if (time_of_min_pkt > q->watchdog.last_expires && time_of_min_pkt < now)
 			return NULL;
