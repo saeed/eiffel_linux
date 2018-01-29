@@ -139,7 +139,7 @@ inline struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 		return NULL;
 	}	
 
-	index = get_min_index(gq);
+	index = get_min_index(gq, now);
 		
 	if (!gq->main_buckets[index].qlen)
 		return NULL;
