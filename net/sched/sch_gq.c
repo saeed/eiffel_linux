@@ -111,8 +111,9 @@ inline void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 inline unsigned long get_min_index2 (struct gradient_queue *gq) {
 	unsigned long index = time_to_index(gq, gq->head_ts);
 	gq->main_ts = gq->head_ts;
-	while (!gq->main_buckets[index].qlen) {
+	while (!gq->main_buckets[index].qlen && gq->main_ts <= gq->max_ts) {
 		index++;
+		index = index % gq->num_of_buckets;
 		gq->main_ts += gq->grnlrty;
 	}
 	return index;
@@ -122,6 +123,7 @@ inline unsigned long get_min_index (struct gradient_queue *gq, uint64_t now) {
 	unsigned long index = time_to_index(gq, gq->head_ts);
 	while (!gq->main_buckets[index].qlen && gq->head_ts <= now) {
 		index++;
+		index = index % gq->num_of_buckets;
 		gq->head_ts += gq->grnlrty;
 	}
 	return index;
@@ -196,9 +198,9 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 	skb = gq_extract(q->gq, now);
 	if(!skb) {	
 
-		if (!(q->gq->num_of_elements)) {
+		if (!(q->gq->num_of_elements))
 			return NULL;
-		}
+
 		get_min_index2(q->gq);
 		time_of_min_pkt = q->gq->main_ts;
 
