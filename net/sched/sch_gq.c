@@ -108,7 +108,7 @@ inline void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 	bucket_queue_add(&(gq->main_buckets[index]), skb);
 }
 
-inline unsigned long get_min_index2 (struct gradient_queue *gq) {
+inline void get_min_index2 (struct gradient_queue *gq) {
 	unsigned long index = time_to_index(gq, gq->head_ts);
 	gq->main_ts = gq->head_ts;
 	while (!gq->main_buckets[index].qlen && gq->main_ts <= gq->max_ts) {
@@ -116,7 +116,6 @@ inline unsigned long get_min_index2 (struct gradient_queue *gq) {
 		index = index % gq->num_of_buckets;
 		gq->main_ts += gq->grnlrty;
 	}
-	return index;
 }
 
 inline unsigned long get_min_index (struct gradient_queue *gq, uint64_t now) {
@@ -131,7 +130,6 @@ inline unsigned long get_min_index (struct gradient_queue *gq, uint64_t now) {
 
 inline struct sk_buff *gq_extract(struct gradient_queue *gq, uint64_t now) {
 	unsigned long index = 0;
-	u64 base_ts = 0, skb_ts = 0;
 	struct sk_buff *ret_skb;
 
 	if(!gq->num_of_elements) {
@@ -173,13 +171,13 @@ static int gq_enqueue(struct sk_buff *skb, struct Qdisc *sch,
 
 	qdisc_qstats_backlog_inc(sch, skb);
 
-	if (skb->sk) {
+	/*if (skb->sk) {
 		if (!skb->sk->sk_time_of_last_sent_pkt || skb->sk->sk_time_of_last_sent_pkt < now)
 			skb->sk->sk_time_of_last_sent_pkt = now;
 		skb->trans_time = skb->sk->sk_time_of_last_sent_pkt;
 	} else {
 		skb->trans_time = now;
-	}
+	}*/
 
 	gq_push (q->gq, skb);
 
@@ -204,26 +202,25 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 		get_min_index2(q->gq);
 		time_of_min_pkt = q->gq->main_ts;
 
-		if (time_of_min_pkt > q->watchdog.last_expires && time_of_min_pkt < now)
-			return NULL;
+		//if (time_of_min_pkt > q->watchdog.last_expires && time_of_min_pkt < now)
+		//	return NULL;
 
 		qdisc_watchdog_schedule_ns(&q->watchdog, time_of_min_pkt);
 
 		return NULL;
 	}
 
-	if (skb->sk) {
+	/*if (skb->sk) {
 		u32 rate = skb->sk->sk_pacing_rate;
 		if (rate != ~0U) {
 			u64 len = ((u64)qdisc_pkt_len(skb)) * NSEC_PER_SEC;
-
 			if (likely(rate))
 				do_div(len, rate);
 			if (unlikely(len > NSEC_PER_SEC))
 				len = NSEC_PER_SEC;
 			skb->sk->sk_time_of_last_sent_pkt = skb->sk->sk_time_of_last_sent_pkt + len;
 		}
-	}
+	}*/
 
 	sch->q.qlen--;
 
@@ -287,7 +284,7 @@ static int gq_init(struct Qdisc *sch, struct nlattr *opt)
 	struct gradient_queue *gq_p;
 	int i = 0;
 	u64 granularity =        10000;
-	u64 horizon =      10000000000;
+	u64 horizon =      20000000000;
 	u64 now = ktime_get_ns();
 
 	gq_p = kmalloc_node(sizeof(struct gradient_queue),

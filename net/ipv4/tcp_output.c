@@ -1040,10 +1040,13 @@ static int tcp_transmit_skb(struct sock *sk, struct sk_buff *skb, int clone_it,
 			if (tp->lst_tx_time < now)
 				tp->lst_tx_time = now;
 
+		} else {
+			tp->lst_tx_time = now;
 		}
-		skb->trans_time = tp->lst_tx_time;
-	}	
-
+	} else {
+		tp->lst_tx_time = now;
+	}
+	skb->trans_time = tp->lst_tx_time;
 
 
 	icsk->icsk_af_ops->send_check(sk, skb);
