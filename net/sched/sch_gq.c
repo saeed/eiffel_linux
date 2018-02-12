@@ -1,4 +1,3 @@
-
 #include <linux/module.h>
 #include <linux/types.h>
 #include <linux/kernel.h>
@@ -29,32 +28,23 @@ struct gq_bucket {
 
 struct curvature_desc {
 	unsigned long a;
-//	u64 b;
 	u64 c;
 	u64 abcI;
 	u64 wwI;
 };
 
-struct precalc_a_b {
-	u64 a;
-	u64 b;
-};
-
 struct gradient_queue {
-	unsigned long                    head_ts;
+	unsigned long	       head_ts;
 	u64                    grnlrty;
 	u64                    num_of_elements;
 	u64                    num_of_buckets;
-	u64                    side;
-	unsigned long                    h, w, l, s;
+	unsigned long          h, w, l, s;
 	u64                    main_ts, max_ts, horizon;
 	struct gq_bucket       *main_buckets;
 };
 
 
 struct gq_sched_data {
-	u64		       time_next_delayed_wake_up;
-	u64		       visited_by_timer;
 	struct gradient_queue  *gq;
 	struct qdisc_watchdog  watchdog;
 };
@@ -90,7 +80,8 @@ inline void bucket_queue_add(struct gq_bucket *bucket, struct sk_buff *skb)
 }
 
 // circular gradient queue
-inline unsigned long time_to_index(struct gradient_queue *gq, unsigned long time) {
+inline unsigned long time_to_index(struct gradient_queue *gq,
+					unsigned long time) {
 	return (time/gq->grnlrty) % gq->num_of_buckets;
 }
 inline void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
@@ -108,7 +99,7 @@ inline void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 	bucket_queue_add(&(gq->main_buckets[index]), skb);
 }
 
-inline void get_min_index2 (struct gradient_queue *gq) {
+/*inline void get_min_index2 (struct gradient_queue *gq) {
 	unsigned long index = time_to_index(gq, gq->head_ts);
 	gq->main_ts = gq->head_ts;
 	while (!gq->main_buckets[index].qlen && gq->main_ts <= gq->max_ts) {
@@ -116,14 +107,15 @@ inline void get_min_index2 (struct gradient_queue *gq) {
 		index = index % gq->num_of_buckets;
 		gq->main_ts += gq->grnlrty;
 	}
-}
+}*/
 
 inline unsigned long get_min_index (struct gradient_queue *gq, uint64_t now) {
 	unsigned long index = time_to_index(gq, gq->head_ts);
 	while (!gq->main_buckets[index].qlen && gq->head_ts <= now) {
-		index++;
-		index = index % gq->num_of_buckets;
+		//index++;
+		//index = index % gq->num_of_buckets;
 		gq->head_ts += gq->grnlrty;
+		index = time_to_index(gq, gq->head_ts);
 	}
 	return index;
 }
@@ -171,13 +163,14 @@ static int gq_enqueue(struct sk_buff *skb, struct Qdisc *sch,
 
 	qdisc_qstats_backlog_inc(sch, skb);
 
-	/*if (skb->sk) {
-		if (!skb->sk->sk_time_of_last_sent_pkt || skb->sk->sk_time_of_last_sent_pkt < now)
+	if (skb->sk) {
+		if (!skb->sk->sk_time_of_last_sent_pkt)// ||
+			//skb->sk->sk_time_of_last_sent_pkt < now)
 			skb->sk->sk_time_of_last_sent_pkt = now;
 		skb->trans_time = skb->sk->sk_time_of_last_sent_pkt;
 	} else {
 		skb->trans_time = now;
-	}*/
+	}
 
 	gq_push (q->gq, skb);
 
@@ -191,7 +184,7 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 	struct gq_sched_data *q = qdisc_priv(sch);
 	u64 now = ktime_get_ns();
 	struct sk_buff *skb;
-	u64 time_of_min_pkt;
+	//u64 time_of_min_pkt;
 
 	skb = gq_extract(q->gq, now);
 	if(!skb) {	
@@ -199,18 +192,20 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 		if (!(q->gq->num_of_elements))
 			return NULL;
 
-		get_min_index2(q->gq);
-		time_of_min_pkt = q->gq->main_ts;
+		//get_min_index2(q->gq);
+		//time_of_min_pkt = q->gq->main_ts;
 
-		//if (time_of_min_pkt > q->watchdog.last_expires && time_of_min_pkt < now)
+		//if (time_of_min_pkt > q->watchdog.last_expires
+		//	&& time_of_min_pkt < now)
 		//	return NULL;
 
-		qdisc_watchdog_schedule_ns(&q->watchdog, time_of_min_pkt);
+		//qdisc_watchdog_schedule_ns(&q->watchdog, time_of_min_pkt);
+		qdisc_watchdog_schedule_ns(&q->watchdog, now + q->gq->grnlrty);
 
 		return NULL;
 	}
 
-	/*if (skb->sk) {
+	if (skb->sk) {
 		u32 rate = skb->sk->sk_pacing_rate;
 		if (rate != ~0U) {
 			u64 len = ((u64)qdisc_pkt_len(skb)) * NSEC_PER_SEC;
@@ -218,16 +213,18 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 				do_div(len, rate);
 			if (unlikely(len > NSEC_PER_SEC))
 				len = NSEC_PER_SEC;
-			skb->sk->sk_time_of_last_sent_pkt = skb->sk->sk_time_of_last_sent_pkt + len;
+			//if (now > skb->trans_time && (((now - skb->trans_time) / len) > 25)) {
+			//	skb->sk->sk_time_of_last_sent_pkt += now - skb->trans_time;
+			//}
+			skb->sk->sk_time_of_last_sent_pkt += len;
 		}
-	}*/
+	}
 
 	sch->q.qlen--;
 
 	qdisc_qstats_backlog_dec(sch, skb);
 	qdisc_bstats_update(sch, skb);
 
-	
 	return skb;
 }
 
@@ -238,7 +235,8 @@ static void gq_reset(struct Qdisc *sch)
 	sch->q.qlen = 0;
 	sch->qstats.backlog = 0;
 
-	memset(q->gq->main_buckets, 0, sizeof(struct gq_bucket) * q->gq->num_of_buckets);
+	memset(q->gq->main_buckets, 0,
+		sizeof(struct gq_bucket) * q->gq->num_of_buckets);
 }
 
 static int gq_change(struct Qdisc *sch, struct nlattr *opt)
@@ -260,24 +258,6 @@ static void gq_destroy(struct Qdisc *sch)
 }
 
 // initializer
-
-inline unsigned int log_approx(uint32_t v) {
-	const unsigned int b[] = {0x2, 0xC, 0xF0, 0xFF00, 0xFFFF0000};
-	const unsigned int S[] = {1, 2, 4, 8, 16};
-	int i;
-
-	unsigned int r = 0; // result of log2(v) will go here
-	for (i = 4; i >= 0; i--) // unroll for speed...
-	{
-  		if (v & b[i])
-  		{
-    			v >>= S[i];
-    			r |= S[i];
-  		}
-	}
-	return r;
-}
-
 static int gq_init(struct Qdisc *sch, struct nlattr *opt)
 {
 	struct gq_sched_data *q = qdisc_priv(sch);
@@ -300,12 +280,15 @@ static int gq_init(struct Qdisc *sch, struct nlattr *opt)
 	gq_p->num_of_buckets = horizon / granularity;
 	gq_p->num_of_elements = 0;
 
-	gq_p->main_buckets = kmalloc_node(sizeof(struct gq_bucket) * gq_p->num_of_buckets,
+	gq_p->main_buckets = kmalloc_node(
+			sizeof(struct gq_bucket) * gq_p->num_of_buckets,
 			GFP_KERNEL | __GFP_REPEAT | __GFP_NOWARN,
 			netdev_queue_numa_node_read(sch->dev_queue));
 
 	if(!gq_p->main_buckets)
-		gq_p->main_buckets = vmalloc_node(sizeof(struct gq_bucket) * gq_p->num_of_buckets, netdev_queue_numa_node_read(sch->dev_queue));
+		gq_p->main_buckets = vmalloc_node(
+			sizeof(struct gq_bucket) * gq_p->num_of_buckets,
+			netdev_queue_numa_node_read(sch->dev_queue));
 
 	if(!gq_p->main_buckets)
 		return -1;
@@ -318,9 +301,7 @@ static int gq_init(struct Qdisc *sch, struct nlattr *opt)
 	}
 
 	q->gq = gq_p;
-	q->visited_by_timer = 0;
 	sch->limit		= 80000;
-	q->time_next_delayed_wake_up = now;
 	qdisc_watchdog_init(&q->watchdog, sch);
 
 	return 0;
