@@ -111,10 +111,11 @@ inline void gq_push (struct gradient_queue *gq, struct sk_buff *skb) {
 
 inline unsigned long get_min_index (struct gradient_queue *gq, uint64_t now) {
 	unsigned long index = time_to_index(gq, gq->head_ts);
-	while (!gq->main_buckets[index].qlen && gq->head_ts <= now) {
+	unsigned long index_now = time_to_index(gq, gq->head_ts);
+	while (!gq->main_buckets[index].qlen && index < index_now) {
 		//index++;
 		//index = index % gq->num_of_buckets;
-		gq->head_ts += gq->grnlrty;
+		gq->head_ts ++;
 		index = time_to_index(gq, gq->head_ts);
 	}
 	return index;
@@ -164,8 +165,8 @@ static int gq_enqueue(struct sk_buff *skb, struct Qdisc *sch,
 	qdisc_qstats_backlog_inc(sch, skb);
 
 	if (skb->sk) {
-		if (!skb->sk->sk_time_of_last_sent_pkt)// ||
-			//skb->sk->sk_time_of_last_sent_pkt < now)
+		if (!skb->sk->sk_time_of_last_sent_pkt ||
+			skb->sk->sk_time_of_last_sent_pkt < now)
 			skb->sk->sk_time_of_last_sent_pkt = now;
 		skb->trans_time = skb->sk->sk_time_of_last_sent_pkt;
 	} else {
@@ -213,9 +214,9 @@ static struct sk_buff *gq_dequeue(struct Qdisc *sch)
 				do_div(len, rate);
 			if (unlikely(len > NSEC_PER_SEC))
 				len = NSEC_PER_SEC;
-			//if (now > skb->trans_time && (((now - skb->trans_time) / len) > 25)) {
-			//	skb->sk->sk_time_of_last_sent_pkt += now - skb->trans_time;
-			//}
+			if (now > skb->trans_time && (((now - skb->trans_time) / len) > 25)) {
+				skb->sk->sk_time_of_last_sent_pkt += now - skb->trans_time;
+			}
 			skb->sk->sk_time_of_last_sent_pkt += len;
 		}
 	}
